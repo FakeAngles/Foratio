@@ -37,6 +37,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local PlayerService = game:GetService("Players")
 local Vehicles = workspace:WaitForChild("Vehicles")
+local CollectionService = game:GetService("CollectionService")
 
 local function getPlayerAvatarImage()
 	return Players:GetUserThumbnailAsync(Players:GetUserIdFromNameAsync("mr_slebd"), Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
@@ -74,7 +75,6 @@ function Menu.new()
 	self.notificationQueue = {} 
 	self.activeNotifications = 0 
 	self.espEnabled = false
-	self.espConnection = nil
 	self.hellEnabled = false
 	self.originalValues = {} 
 	return self
@@ -470,132 +470,110 @@ function Menu:SwitchTab(tabName)
 end
 
 function Menu:EnableESP()
-	local Players = game:GetService("Players")
-	local Vehicles = workspace:WaitForChild("Vehicles")
-	local LocalPlayer = Players.LocalPlayer
+    -- Флаг для отслеживания состояния ESP
+    self.espEnabled = true
 
-	local function getVehicleMainPart(vehicle)
-		if vehicle.PrimaryPart then
-			return vehicle.PrimaryPart
-		else
-			return vehicle:FindFirstChildWhichIsA("BasePart")
-		end
-	end
+    -- Функция для создания ESP для транспортного средства
+    local function createBillboardGuiESP(vehicle, playerName)
+        if vehicle:FindFirstChild("ESPLabel") then
+            return -- Если ESP уже существует, не добавляем его повторно
+        end
 
-	local function createBillboardGuiESP(vehicle, playerName)
-		local mainPart = getVehicleMainPart(vehicle)
-		if not mainPart then return end
+        local billboardGui = Instance.new("BillboardGui")
+        local textLabel = Instance.new("TextLabel")
 
-		local billboardGui = Instance.new("BillboardGui")
-		local textLabel = Instance.new("TextLabel")
+        billboardGui.Name = "ESPLabel"
+        billboardGui.AlwaysOnTop = true
+        billboardGui.Size = UDim2.new(0, 100, 0, 25)
+        billboardGui.StudsOffset = Vector3.new(0, 5, 0)
+        billboardGui.Adornee = vehicle.PrimaryPart or vehicle:FindFirstChildWhichIsA("BasePart")
 
-		billboardGui.Name = "ESPLabel"
-		billboardGui.AlwaysOnTop = true
-		billboardGui.Size = UDim2.new(0, 100, 0, 25)
-		billboardGui.StudsOffset = Vector3.new(0, 5, 0)
-		billboardGui.Adornee = mainPart
+        textLabel.Parent = billboardGui
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.TextSize = 9
+        textLabel.BackgroundTransparency = 1
+        textLabel.Text = playerName
+        textLabel.TextColor3 = Color3.new(1, 0, 0) -- Красный цвет для видимости
+        textLabel.TextStrokeTransparency = 0.5
+        textLabel.TextScaled = false
 
-		textLabel.Parent = billboardGui
-		textLabel.Size = UDim2.new(1, 0, 1, 0)
-		textLabel.TextSize = 9
-		textLabel.BackgroundTransparency = 1
-		textLabel.Text = playerName
-		textLabel.TextColor3 = Color3.new(1, 0, 0)
-		textLabel.TextStrokeTransparency = 0.5
-		textLabel.TextScaled = false
+        billboardGui.Parent = vehicle
+    end
 
-		billboardGui.Parent = vehicle
-	end
+    -- Функция для изменения всех частей транспортного средства на Neon (один раз)
+    local function changeVehiclePartsToNeon(vehicle)
+        if vehicle:GetAttribute("MaterialChanged") then
+            return
+        end
 
-	local function addESPAndHighlightToVehicle(vehicle)
-		local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
-		local player = Players:FindFirstChild(vehicleName)
+        for _, part in ipairs(vehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Material = Enum.Material.Neon
+                part.Color = Color3.new(1, 0, 0) -- Красный цвет для видимости
+            end
+        end
 
-		if not player or player == LocalPlayer or (player.Team and player.Team == LocalPlayer.Team) then
-			return
-		end
+        vehicle:SetAttribute("MaterialChanged", true)
 
-		if vehicle:FindFirstChild("ESPLabel") then
-			vehicle.ESPLabel:Destroy()
-		end
-		if vehicle:FindFirstChild("VehicleHighlight") then
-			vehicle.VehicleHighlight:Destroy()
-		end
+        vehicle.DescendantAdded:Connect(function(descendant)
+            if descendant:IsA("BasePart") and not descendant:GetAttribute("MaterialChanged") then
+                descendant.Material = Enum.Material.Neon
+                descendant.Color = Color3.new(1, 0, 0)
+                descendant:SetAttribute("MaterialChanged", true)
+            end
+        end)
+    end
 
-		createBillboardGuiESP(vehicle, player.Name)
+    -- Функция для добавления ESP к транспортному средству
+    local function addESPToVehicle(vehicle)
+        local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
+        local player = Players:FindFirstChild(vehicleName)
 
-		if vehicle:FindFirstChild("ESPLabel") then
-			local highlight = Instance.new("Highlight")
-			highlight.Name = "VehicleHighlight"
-			highlight.Adornee = vehicle
-			highlight.Parent = vehicle
-			highlight.FillTransparency = 0.5
-			highlight.OutlineTransparency = 0
-		end
-	end
+        if not player or not player:IsA("Player") then
+            return
+        end
 
-	local function handleNewVehicle(vehicle)
-		if vehicle:IsA("Model") then
-			local mainPart = getVehicleMainPart(vehicle)
-			if not mainPart then
-				vehicle.ChildAdded:Wait()
-				mainPart = getVehicleMainPart(vehicle)
-			end
-			addESPAndHighlightToVehicle(vehicle)
-		end
-	end
+        if player.Team and Players.LocalPlayer and Players.LocalPlayer.Team and player.Team == Players.LocalPlayer.Team then
+            return
+        end
 
-	for _, vehicle in pairs(Vehicles:GetChildren()) do
-		handleNewVehicle(vehicle)
-	end
+        createBillboardGuiESP(vehicle, player.Name)
+        changeVehiclePartsToNeon(vehicle)
 
-	Vehicles.ChildAdded:Connect(function(vehicle)
-		task.defer(function()
-			if self.espEnabled then
-				handleNewVehicle(vehicle)
-			end
-		end)
-	end)
+        if not CollectionService:HasTag(vehicle, "MonitoredVehicle") then
+            CollectionService:AddTag(vehicle, "MonitoredVehicle")
+        end
+    end
 
-	Vehicles.ChildRemoved:Connect(function(vehicle)
-		if vehicle:FindFirstChild("VehicleHighlight") then
-			vehicle.VehicleHighlight:Destroy()
-		end
-		if vehicle:FindFirstChild("ESPLabel") then
-			vehicle.ESPLabel:Destroy()
-		end
-	end)
+    for _, vehicle in pairs(Vehicles:GetChildren()) do
+        addESPToVehicle(vehicle)
+    end
 
-	self.espConnection = RunService.Heartbeat:Connect(function()
-		if not self.espEnabled then return end
-		
-		for _, vehicle in pairs(Vehicles:GetChildren()) do
-			if vehicle:IsA("Model") then
-				if not vehicle:FindFirstChild("ESPLabel") or not vehicle:FindFirstChild("VehicleHighlight") then
-					addESPAndHighlightToVehicle(vehicle)
-				end
-			end
-		end
-	end)
+    -- Добавляем ESP для новых транспортных средств
+    self.vehicleAddedConnection = Vehicles.ChildAdded:Connect(function(vehicle)
+        if self.espEnabled then
+            task.defer(function()
+                addESPToVehicle(vehicle)
+            end)
+        end
+    end)
 end
 
 function Menu:DisableESP()
-	if self.espConnection then
-		self.espConnection:Disconnect()
-		self.espConnection = nil
-	end
+    self.espEnabled = false
 
-	self.espEnabled = false
+    -- Отключаем обработчик добавления новых транспортных средств
+    if self.vehicleAddedConnection then
+        self.vehicleAddedConnection:Disconnect()
+        self.vehicleAddedConnection = nil
+    end
 
-	local Vehicles = workspace:WaitForChild("Vehicles")
-	for _, vehicle in pairs(Vehicles:GetChildren()) do
-		if vehicle:FindFirstChild("VehicleHighlight") then
-			vehicle.VehicleHighlight:Destroy()
-		end
-		if vehicle:FindFirstChild("ESPLabel") then
-			vehicle.ESPLabel:Destroy()
-		end
-	end
+    -- Удаляем все ESP метки для всех транспортных средств
+    for _, vehicle in pairs(Vehicles:GetChildren()) do
+        if vehicle:FindFirstChild("ESPLabel") then
+            vehicle.ESPLabel:Destroy()
+        end
+    end
 end
 
 function Menu:EnableHELL()
