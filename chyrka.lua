@@ -630,7 +630,7 @@ function Menu:EnableHELL()
 		-- Modify DamageMult and OverheatMult
 		local damageMult = config:FindFirstChild("DamageMult")
 		if damageMult then
-			damageMult.Value = 50000
+			damageMult.Value = 5000
 		end
 
 		local overheatMult = config:FindFirstChild("OverheatMult")
