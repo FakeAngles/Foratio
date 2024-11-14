@@ -656,7 +656,7 @@ function Menu:EnableHELL()
 
 			local explosiveMult = shellType:FindFirstChild("ExplosiveMult")
 			if explosiveMult then
-				explosiveMult.Value = 50000
+				explosiveMult.Value = 5000
 			end
 
 			local penetration = shellType:FindFirstChild("Penetration")
