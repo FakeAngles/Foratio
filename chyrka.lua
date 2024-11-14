@@ -630,7 +630,7 @@ function Menu:EnableHELL()
 		-- Modify DamageMult and OverheatMult
 		local damageMult = config:FindFirstChild("DamageMult")
 		if damageMult then
-			damageMult.Value = 500
+			damageMult.Value = 10
 		end
 
 		local overheatMult = config:FindFirstChild("OverheatMult")
@@ -656,7 +656,7 @@ function Menu:EnableHELL()
 
 			local explosiveMult = shellType:FindFirstChild("ExplosiveMult")
 			if explosiveMult then
-				explosiveMult.Value = 500
+				explosiveMult.Value = 5000
 			end
 
 			local penetration = shellType:FindFirstChild("Penetration")
