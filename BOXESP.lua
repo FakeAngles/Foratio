@@ -358,19 +358,3 @@ ESP:AddObjectListener(charBodies, {
     end, 
     IsEnabled = "player"
 }); ESP.player = true
-
-task.spawn(function()
-    while true do task.wait(3)
-        pcall(function()
-            for obj, box in pairs(ESP.Objects) do
-                if box.Type == "Box" and obj:IsA("Model") then
-                    local torso = obj:FindFirstChild("torso")
-                    if torso then
-                        box:Remove()
-                        print("Removed ESP from friendlyTagged torso")
-                    end
-                end
-            end
-        end) 
-    end
-end)
