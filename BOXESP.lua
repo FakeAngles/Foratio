@@ -4,10 +4,8 @@ local ESP = {
     BoxShift = CFrame.new(0, -1.5, 0),
     BoxSize = Vector3.new(4, 6, 0),
     Color = Color3.fromRGB(255, 170, 0),
-    FaceCamera = false,
     Thickness = 2,
     AttachShift = 1,
-    Players = false,
     
     Objects = setmetatable({}, {__mode="kv"}),
     Overrides = {}
@@ -136,9 +134,6 @@ function boxBase:Update()
     if ESP.Overrides.UpdateAllow and not ESP.Overrides.UpdateAllow(self) then
         allow = false
     end
-    if self.Player and not ESP.Players then
-        allow = false
-    end
     if self.IsEnabled and (type(self.IsEnabled) == "string" and not ESP[self.IsEnabled] or type(self.IsEnabled) == "function" and not self:IsEnabled()) then
         allow = false
     end
@@ -178,26 +173,6 @@ function boxBase:Update()
         end
         self.Components.Quad.Color = self.Color or ESP.Color
     end
-
-    if ESP.Names then
-        local TagPos, isTagOnScreen = WorldToViewportPoint(cam, cf.p + Vector3.new(0, size.Y / 2, 0))
-
-        if isTagOnScreen and TagPos.Z > 0 then
-            if self.Components.Distance then
-                self.Components.Distance.Visible = true
-                self.Components.Distance.Position = Vector2.new(TagPos.X, TagPos.Y + 14)
-                self.Components.Distance.Text = math.floor((cam.CFrame.p - cf.p).Magnitude) .. "m"
-            end
-        else
-            if self.Components.Distance then
-                self.Components.Distance.Visible = false
-            end
-        end
-    else
-        if self.Components.Distance then
-            self.Components.Distance.Visible = false
-        end
-    end
 end
 
 function ESP:Add(obj, options)
@@ -235,13 +210,6 @@ function ESP:Add(obj, options)
         Transparency = 1,
         Filled = false,
         Visible = self.Enabled and self.Boxes
-    })
-    box.Components["Distance"] = Draw("Text", {
-        Color = box.Color,
-        Center = true,
-        Outline = true,
-        Size = 19,
-        Visible = self.Enabled and self.Names
     })
 
     self.Objects[obj] = box
@@ -318,9 +286,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 end)
 
 ESP:Toggle(true)
-ESP.Players = false 
-ESP.Boxes = true 
-ESP.Names = false
+ESP.Boxes = true
 
 local charBodies
 
