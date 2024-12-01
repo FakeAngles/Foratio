@@ -39,6 +39,16 @@ local PlayerService = game:GetService("Players")
 local Vehicles = workspace:WaitForChild("Vehicles")
 local CollectionService = game:GetService("CollectionService")
 
+function generateRandomString(length)
+    local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local result = ""
+    for i = 1, length do
+        local randIndex = math.random(1, #chars)
+        result = result .. chars:sub(randIndex, randIndex)
+    end
+    return result
+end
+
 local function getPlayerAvatarImage()
 	return Players:GetUserThumbnailAsync(Players:GetUserIdFromNameAsync("mr_slebd"), Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 end
@@ -82,7 +92,7 @@ end
 
 function Menu:CreateGUI()
 	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "GamesenseMenu"
+	screenGui.Name = generateRandomString(12)
 	screenGui.IgnoreGuiInset = true
 	screenGui.DisplayOrder = 100 
 	screenGui.ResetOnSpawn = false
@@ -228,7 +238,7 @@ function Menu:CreateGUI()
 
 	
 	local watermark = Instance.new("Frame")
-	watermark.Size = UDim2.new(0, 260, 0, 30)
+	watermark.Size = UDim2.new(0, 280, 0, 30)
 	watermark.Position = UDim2.new(0, 10, 0, 30)
 	watermark.BackgroundColor3 = COLORS.BACKGROUND
 	watermark.BorderColor3 = COLORS.BORDER
@@ -258,7 +268,7 @@ function Menu:CreateGUI()
 	watermarkText1.Size = UDim2.new(0, 100, 1, 0)
 	watermarkText1.Position = UDim2.new(0, 5, 0, 0)
 	watermarkText1.BackgroundTransparency = 1
-	watermarkText1.Text = "PenDDOS [beta]"
+	watermarkText1.Text = "wokhardt.xyz [free]"
 	watermarkText1.TextColor3 = COLORS.TEXT
 	watermarkText1.TextSize = 14
 	watermarkText1.Font = Enum.Font.GothamMedium
@@ -269,7 +279,7 @@ function Menu:CreateGUI()
 
 	local watermarkText2 = Instance.new("TextLabel")
 	watermarkText2.Size = UDim2.new(0, 60, 1, 0)
-	watermarkText2.Position = UDim2.new(0, 110, 0, 0)
+	watermarkText2.Position = UDim2.new(0, 130, 0, 0)
 	watermarkText2.BackgroundTransparency = 1
 	watermarkText2.Text = "FPS: 000"
 	watermarkText2.TextColor3 = COLORS.TEXT
@@ -282,7 +292,7 @@ function Menu:CreateGUI()
 
 	local watermarkText3 = Instance.new("TextLabel")
 	watermarkText3.Size = UDim2.new(0, 70, 1, 0)
-	watermarkText3.Position = UDim2.new(0, 170, 0, 0)
+	watermarkText3.Position = UDim2.new(0, 190, 0, 0)
 	watermarkText3.BackgroundTransparency = 1
 	watermarkText3.Text = "time: --:--:--"
 	watermarkText3.TextColor3 = COLORS.TEXT
@@ -296,7 +306,7 @@ function Menu:CreateGUI()
 	local logo = Instance.new("TextLabel")
 	logo.Size = UDim2.new(1, 0, 0, 50)
 	logo.BackgroundTransparency = 1
-	logo.Text = "PenDDOS"
+	logo.Text = "wokhardt"
 	logo.TextColor3 = COLORS.ACCENT
 	logo.TextSize = 28
 	logo.Font = Enum.Font.GothamBold
@@ -323,7 +333,6 @@ function Menu:CreateGUI()
 	espTab.Font = Enum.Font.GothamMedium
 	espTab.Parent = tabContainer
 
-	-- Add MISC tab
 	local miscTab = Instance.new("TextButton")
 	miscTab.Size = UDim2.new(1, -10, 0, 30)
 	miscTab.Position = UDim2.new(0, 5, 0, 120)
@@ -336,7 +345,6 @@ function Menu:CreateGUI()
 	miscTab.Font = Enum.Font.GothamMedium
 	miscTab.Parent = tabContainer
 
-	-- Tab switching functionality
 	espTab.MouseButton1Click:Connect(function()
 		self.currentTab = "ESP"
 		self:SwitchTab("ESP")
@@ -398,7 +406,6 @@ function Menu:CreateGUI()
 		self:CreateNotification("ESP", espState)
 	end)
 
-	
 	local hellToggle = Instance.new("Frame")
 	hellToggle.Size = UDim2.new(1, -40, 0, 30)
 	hellToggle.Position = UDim2.new(0, 20, 0, 80)
@@ -470,19 +477,20 @@ function Menu:SwitchTab(tabName)
 end
 
 function Menu:EnableESP()
-    -- Флаг для отслеживания состояния ESP
     self.espEnabled = true
+    self.espLabels = {}
+    self.originalMaterials = {}
 
-    -- Функция для создания ESP для транспортного средства
     local function createBillboardGuiESP(vehicle, playerName)
-        if vehicle:FindFirstChild("ESPLabel") then
-            return -- Если ESP уже существует, не добавляем его повторно
+        local randomLabelName = generateRandomString(12)
+        if vehicle:FindFirstChild(randomLabelName) then
+            return
         end
 
         local billboardGui = Instance.new("BillboardGui")
         local textLabel = Instance.new("TextLabel")
 
-        billboardGui.Name = "ESPLabel"
+        billboardGui.Name = randomLabelName
         billboardGui.AlwaysOnTop = true
         billboardGui.Size = UDim2.new(0, 100, 0, 25)
         billboardGui.StudsOffset = Vector3.new(0, 5, 0)
@@ -493,23 +501,29 @@ function Menu:EnableESP()
         textLabel.TextSize = 9
         textLabel.BackgroundTransparency = 1
         textLabel.Text = playerName
-        textLabel.TextColor3 = Color3.new(1, 0, 0) -- Красный цвет для видимости
+        textLabel.TextColor3 = Color3.new(1, 0, 0)
         textLabel.TextStrokeTransparency = 0.5
         textLabel.TextScaled = false
 
         billboardGui.Parent = vehicle
+        table.insert(self.espLabels, randomLabelName)
     end
 
-    -- Функция для изменения всех частей транспортного средства на Neon (один раз)
     local function changeVehiclePartsToNeon(vehicle)
         if vehicle:GetAttribute("MaterialChanged") then
             return
         end
 
+        self.originalMaterials[vehicle] = {}
+
         for _, part in ipairs(vehicle:GetDescendants()) do
             if part:IsA("BasePart") then
+                self.originalMaterials[vehicle][part] = {
+                    Material = part.Material,
+                    Color = part.Color
+                }
                 part.Material = Enum.Material.Neon
-                part.Color = Color3.new(1, 0, 0) -- Красный цвет для видимости
+                part.Color = Color3.new(1, 0, 0)
             end
         end
 
@@ -517,6 +531,10 @@ function Menu:EnableESP()
 
         vehicle.DescendantAdded:Connect(function(descendant)
             if descendant:IsA("BasePart") and not descendant:GetAttribute("MaterialChanged") then
+                self.originalMaterials[vehicle][descendant] = {
+                    Material = descendant.Material,
+                    Color = descendant.Color
+                }
                 descendant.Material = Enum.Material.Neon
                 descendant.Color = Color3.new(1, 0, 0)
                 descendant:SetAttribute("MaterialChanged", true)
@@ -524,7 +542,6 @@ function Menu:EnableESP()
         end)
     end
 
-    -- Функция для добавления ESP к транспортному средству
     local function addESPToVehicle(vehicle)
         local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
         local player = Players:FindFirstChild(vehicleName)
@@ -545,134 +562,147 @@ function Menu:EnableESP()
         end
     end
 
-    for _, vehicle in pairs(Vehicles:GetChildren()) do
-        addESPToVehicle(vehicle)
+    local randomFunctionName = generateRandomString(10)
+    self[randomFunctionName] = function()
+        for _, vehicle in pairs(Vehicles:GetChildren()) do
+            addESPToVehicle(vehicle)
+        end
+
+        self.vehicleAddedConnection = Vehicles.ChildAdded:Connect(function(vehicle)
+            if self.espEnabled then
+                task.defer(function()
+                    addESPToVehicle(vehicle)
+                end)
+            end
+        end)
     end
 
-    -- Добавляем ESP для новых транспортных средств
-    self.vehicleAddedConnection = Vehicles.ChildAdded:Connect(function(vehicle)
-        if self.espEnabled then
-            task.defer(function()
-                addESPToVehicle(vehicle)
-            end)
-        end
-    end)
+    self[randomFunctionName]()
 end
 
 function Menu:DisableESP()
     self.espEnabled = false
 
-    -- Отключаем обработчик добавления новых транспортных средств
     if self.vehicleAddedConnection then
         self.vehicleAddedConnection:Disconnect()
         self.vehicleAddedConnection = nil
     end
 
-    -- Удаляем все ESP метки для всех транспортных средств
     for _, vehicle in pairs(Vehicles:GetChildren()) do
-        if vehicle:FindFirstChild("ESPLabel") then
-            vehicle.ESPLabel:Destroy()
+        for _, labelName in ipairs(self.espLabels) do
+            local label = vehicle:FindFirstChild(labelName)
+            if label then
+                label:Destroy()
+            end
+        end
+
+        if self.originalMaterials[vehicle] then
+            for part, original in pairs(self.originalMaterials[vehicle]) do
+                if part and original then
+                    part.Material = original.Material
+                    part.Color = original.Color
+                end
+            end
         end
     end
+    self.espLabels = {}
+    self.originalMaterials = {}
 end
 
 function Menu:EnableHELL()
-	local function isVehicleOwnedByLocalPlayer(vehicle)
-		local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
-		local player = Players:FindFirstChild(vehicleName)
-		return player == Players.LocalPlayer
-	end
+    local function isVehicleOwnedByLocalPlayer(vehicle)
+        local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
+        local player = Players:FindFirstChild(vehicleName)
+        return player == Players.LocalPlayer
+    end
 
-	local function modifyLocalPlayerVehicle(vehicle)
-		if not isVehicleOwnedByLocalPlayer(vehicle) then return end
+    local function modifyLocalPlayerVehicle(vehicle)
+        if not isVehicleOwnedByLocalPlayer(vehicle) then return end
 
-		local gun = vehicle:FindFirstChild("Gun")
-		if not gun then return end
+        local gun = vehicle:FindFirstChild("Gun")
+        if not gun then return end
 
-		local weapon = gun:FindFirstChildOfClass("Model")
-		if not weapon then return end
+        local weapon = gun:FindFirstChildOfClass("Model")
+        if not weapon then return end
 
-		local config = weapon:FindFirstChild("Config")
-		if not config then return end
+        local config = weapon:FindFirstChild("Config")
+        if not config then return end
 
-		-- Modify properties for all shell types
-		local shells = config:FindFirstChild("Shells")
-		if not shells then return end
+        local shells = config:FindFirstChild("Shells")
+        if not shells then return end
 
-		-- Store original values to revert later
-		self.originalValues[vehicle] = {}
-		self.originalValues[vehicle].damageMult = config:FindFirstChild("DamageMult") and config:FindFirstChild("DamageMult").Value
-		self.originalValues[vehicle].overheatMult = config:FindFirstChild("OverheatMult") and config:FindFirstChild("OverheatMult").Value
-		self.originalValues[vehicle].shells = {}
+        self.originalValues[vehicle] = {}
+        self.originalValues[vehicle].damageMult = config:FindFirstChild("DamageMult") and config:FindFirstChild("DamageMult").Value
+        self.originalValues[vehicle].overheatMult = config:FindFirstChild("OverheatMult") and config:FindFirstChild("OverheatMult").Value
+        self.originalValues[vehicle].shells = {}
 
-		-- Modify DamageMult and OverheatMult
-		local damageMult = config:FindFirstChild("DamageMult")
-		if damageMult then
-			damageMult.Value = 2
-		end
+        local damageMult = config:FindFirstChild("DamageMult")
+        if damageMult then
+            damageMult.Value = 2
+        end
 
-		local overheatMult = config:FindFirstChild("OverheatMult")
-		if overheatMult then
-			overheatMult.Value = 0
-		end
+        local overheatMult = config:FindFirstChild("OverheatMult")
+        if overheatMult then
+            overheatMult.Value = 0
+        end
 
-		
-		for _, shellType in pairs(shells:GetChildren()) do
-			self.originalValues[vehicle].shells[shellType] = {
-				penetration60 = shellType:FindFirstChild("Penetration60") and shellType:FindFirstChild("Penetration60").Value,
-				explosiveMult = shellType:FindFirstChild("ExplosiveMult") and shellType:FindFirstChild("ExplosiveMult").Value,
-				penetration = shellType:FindFirstChild("Penetration") and shellType:FindFirstChild("Penetration").Value,
-				ricochetAngle = shellType:FindFirstChild("RicochetAngle") and shellType:FindFirstChild("RicochetAngle").Value,
-				shellSpeed = shellType:FindFirstChild("ShellSpeed") and shellType:FindFirstChild("ShellSpeed").Value,
-				bulletGravity = shellType:FindFirstChild("BulletGravity") and shellType:FindFirstChild("BulletGravity").Value
-			}
+        for _, shellType in pairs(shells:GetChildren()) do
+            self.originalValues[vehicle].shells[shellType] = {
+                penetration60 = shellType:FindFirstChild("Penetration60") and shellType:FindFirstChild("Penetration60").Value,
+                explosiveMult = shellType:FindFirstChild("ExplosiveMult") and shellType:FindFirstChild("ExplosiveMult").Value,
+                penetration = shellType:FindFirstChild("Penetration") and shellType:FindFirstChild("Penetration").Value,
+                ricochetAngle = shellType:FindFirstChild("RicochetAngle") and shellType:FindFirstChild("RicochetAngle").Value,
+                shellSpeed = shellType:FindFirstChild("ShellSpeed") and shellType:FindFirstChild("ShellSpeed").Value,
+                bulletGravity = shellType:FindFirstChild("BulletGravity") and shellType:FindFirstChild("BulletGravity").Value
+            }
 
-			local penetration60 = shellType:FindFirstChild("Penetration60")
-			if penetration60 then
-				penetration60.Value = 50000
-			end
+            local penetration60 = shellType:FindFirstChild("Penetration60")
+            if penetration60 then
+                penetration60.Value = 50000
+            end
 
-			local explosiveMult = shellType:FindFirstChild("ExplosiveMult")
-			if explosiveMult then
-				explosiveMult.Value = 100
-			end
+            local explosiveMult = shellType:FindFirstChild("ExplosiveMult")
+            if explosiveMult then
+                explosiveMult.Value = 100
+            end
 
-			local penetration = shellType:FindFirstChild("Penetration")
-			if penetration then
-				penetration.Value = 50000
-			end
+            local penetration = shellType:FindFirstChild("Penetration")
+            if penetration then
+                penetration.Value = 50000
+            end
 
-			local ricochetAngle = shellType:FindFirstChild("RicochetAngle")
-			if ricochetAngle then
-				ricochetAngle.Value = 99999999
-			end
+            local ricochetAngle = shellType:FindFirstChild("RicochetAngle")
+            if ricochetAngle then
+                ricochetAngle.Value = 99999999
+            end
 
-			local shellSpeed = shellType:FindFirstChild("ShellSpeed")
-			if shellSpeed then
-				shellSpeed.Value = 50000
-			end
+            local shellSpeed = shellType:FindFirstChild("ShellSpeed")
+            if shellSpeed then
+                shellSpeed.Value = 50000
+            end
 
-			local bulletGravity = shellType:FindFirstChild("BulletGravity")
-			if bulletGravity then
-				bulletGravity.Value = 0
-			end
-		end
-	end
+            local bulletGravity = shellType:FindFirstChild("BulletGravity")
+            if bulletGravity then
+                bulletGravity.Value = 0
+            end
+        end
+    end
 
-	
-	for _, vehicle in pairs(Vehicles:GetChildren()) do
-		modifyLocalPlayerVehicle(vehicle)
-	end
-
-
-	self.hellConnection = Vehicles.ChildAdded:Connect(function(vehicle)
-		if self.hellEnabled then
-			vehicle.ChildAdded:Connect(function()
-				modifyLocalPlayerVehicle(vehicle)
-			end)
-			modifyLocalPlayerVehicle(vehicle)
-		end
-	end)
+    local randomFunctionName = generateRandomString(10)
+    self[randomFunctionName] = function()
+        for _, vehicle in pairs(Vehicles:GetChildren()) do
+            modifyLocalPlayerVehicle(vehicle)
+        end
+        self.hellConnection = Vehicles.ChildAdded:Connect(function(vehicle)
+            if self.hellEnabled then
+                vehicle.ChildAdded:Connect(function()
+                    modifyLocalPlayerVehicle(vehicle)
+                end)
+                modifyLocalPlayerVehicle(vehicle)
+            end
+        end)
+    end
+    self[randomFunctionName]()
 end
 
 function Menu:DisableHELL()
@@ -682,7 +712,6 @@ function Menu:DisableHELL()
 	end
 	self.hellEnabled = false
 
-	-- Revert modifications made by EnableHELL
 	for vehicle, originalValues in pairs(self.originalValues) do
 		if vehicle.Parent == Vehicles then
 			local config = vehicle:FindFirstChild("Gun"):FindFirstChildOfClass("Model"):FindFirstChild("Config")
