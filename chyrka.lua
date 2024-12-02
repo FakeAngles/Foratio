@@ -22,7 +22,7 @@ end
 
 local Menu = {}
 Menu.__index = Menu
-
+ 
 local COLORS = {
 	BACKGROUND = Color3.fromRGB(17, 17, 17),
 	TAB_BACKGROUND = Color3.fromRGB(24, 24, 24),
@@ -445,10 +445,12 @@ function Menu:SwitchTab(tabName)
 end
 
 function Menu:EnableESP()
+
     self.espEnabled = true
     self.espLabels = {}
     self.originalMaterials = {}
 
+    local randomFunctionName = generateRandomString(12)
     local function createBillboardGuiESP(vehicle, playerName)
         local randomLabelName = generateRandomString(12)
         if vehicle:FindFirstChild(randomLabelName) then
@@ -478,7 +480,7 @@ function Menu:EnableESP()
     end
 
     local function changeVehiclePartsToNeon(vehicle)
-        if vehicle:GetAttribute("MaterialChanged") then
+        if self.originalMaterials[vehicle] then
             return
         end
 
@@ -486,28 +488,12 @@ function Menu:EnableESP()
 
         for _, part in ipairs(vehicle:GetDescendants()) do
             if part:IsA("BasePart") then
-                self.originalMaterials[vehicle][part] = {
-                    Material = part.Material,
-                    Color = part.Color
-                }
+                self.originalMaterials[vehicle][part] = { Material = part.Material, Color = part.Color }
                 part.Material = Enum.Material.Neon
                 part.Color = Color3.new(1, 0, 0)
             end
         end
-
         vehicle:SetAttribute("MaterialChanged", true)
-
-        vehicle.DescendantAdded:Connect(function(descendant)
-            if descendant:IsA("BasePart") and not descendant:GetAttribute("MaterialChanged") then
-                self.originalMaterials[vehicle][descendant] = {
-                    Material = descendant.Material,
-                    Color = descendant.Color
-                }
-                descendant.Material = Enum.Material.Neon
-                descendant.Color = Color3.new(1, 0, 0)
-                descendant:SetAttribute("MaterialChanged", true)
-            end
-        end)
     end
 
     local function addESPToVehicle(vehicle)
@@ -518,7 +504,7 @@ function Menu:EnableESP()
             return
         end
 
-        if player.Team and Players.LocalPlayer and Players.LocalPlayer.Team and player.Team == Players.LocalPlayer.Team then
+        if player.Team == Players.LocalPlayer.Team then
             return
         end
 
@@ -530,7 +516,6 @@ function Menu:EnableESP()
         end
     end
 
-    local randomFunctionName = generateRandomString(10)
     self[randomFunctionName] = function()
         for _, vehicle in pairs(Vehicles:GetChildren()) do
             addESPToVehicle(vehicle)
@@ -538,13 +523,10 @@ function Menu:EnableESP()
 
         self.vehicleAddedConnection = Vehicles.ChildAdded:Connect(function(vehicle)
             if self.espEnabled then
-                task.defer(function()
-                    addESPToVehicle(vehicle)
-                end)
+                addESPToVehicle(vehicle)
             end
         end)
     end
-
     self[randomFunctionName]()
 end
 
@@ -577,6 +559,9 @@ function Menu:DisableESP()
     self.originalMaterials = {}
 end
 
+local Players = game:GetService("Players")
+local Vehicles = workspace:WaitForChild("Vehicles")
+
 function Menu:EnableHELL()
     local function isVehicleOwnedByLocalPlayer(vehicle)
         local vehicleName = string.gsub(vehicle.Name, "^Chassis", "")
@@ -587,41 +572,20 @@ function Menu:EnableHELL()
     local function modifyLocalPlayerVehicle(vehicle)
         if not isVehicleOwnedByLocalPlayer(vehicle) then return end
 
-        local gun = vehicle:FindFirstChild("Gun")
-        if not gun then return end
-
-        local weapon = gun:FindFirstChildOfClass("Model")
-        if not weapon then return end
-
-        local config = weapon:FindFirstChild("Config")
-        if not config then return end
-
-        local shells = config:FindFirstChild("Shells")
+        local shells = vehicle:FindFirstChild("Shells", true)
         if not shells then return end
 
-        self.originalValues[vehicle] = {}
-        self.originalValues[vehicle].damageMult = config:FindFirstChild("DamageMult") and config:FindFirstChild("DamageMult").Value
-        self.originalValues[vehicle].overheatMult = config:FindFirstChild("OverheatMult") and config:FindFirstChild("OverheatMult").Value
-        self.originalValues[vehicle].shells = {}
-
-        local damageMult = config:FindFirstChild("DamageMult")
-        if damageMult then
-            damageMult.Value = 2
-        end
-
-        local overheatMult = config:FindFirstChild("OverheatMult")
-        if overheatMult then
-            overheatMult.Value = 0
-        end
+        self.originalValues[vehicle] = self.originalValues[vehicle] or {}
+        self.originalValues[vehicle].shells = self.originalValues[vehicle].shells or {}
 
         for _, shellType in pairs(shells:GetChildren()) do
-            self.originalValues[vehicle].shells[shellType] = {
-                penetration60 = shellType:FindFirstChild("Penetration60") and shellType:FindFirstChild("Penetration60").Value,
-                explosiveMult = shellType:FindFirstChild("ExplosiveMult") and shellType:FindFirstChild("ExplosiveMult").Value,
-                penetration = shellType:FindFirstChild("Penetration") and shellType:FindFirstChild("Penetration").Value,
-                ricochetAngle = shellType:FindFirstChild("RicochetAngle") and shellType:FindFirstChild("RicochetAngle").Value,
-                shellSpeed = shellType:FindFirstChild("ShellSpeed") and shellType:FindFirstChild("ShellSpeed").Value,
-                bulletGravity = shellType:FindFirstChild("BulletGravity") and shellType:FindFirstChild("BulletGravity").Value
+            self.originalValues[vehicle].shells[shellType] = self.originalValues[vehicle].shells[shellType] or {
+                penetration60 = shellType:FindFirstChild("Penetration60") and shellType.Penetration60.Value,
+                explosiveMult = shellType:FindFirstChild("ExplosiveMult") and shellType.ExplosiveMult.Value,
+                penetration = shellType:FindFirstChild("Penetration") and shellType.Penetration.Value,
+                ricochetAngle = shellType:FindFirstChild("RicochetAngle") and shellType.RicochetAngle.Value,
+                shellSpeed = shellType:FindFirstChild("ShellSpeed") and shellType.ShellSpeed.Value,
+                bulletGravity = shellType:FindFirstChild("BulletGravity") and shellType.BulletGravity.Value
             }
 
             local penetration60 = shellType:FindFirstChild("Penetration60")
@@ -661,6 +625,7 @@ function Menu:EnableHELL()
         for _, vehicle in pairs(Vehicles:GetChildren()) do
             modifyLocalPlayerVehicle(vehicle)
         end
+
         self.hellConnection = Vehicles.ChildAdded:Connect(function(vehicle)
             if self.hellEnabled then
                 vehicle.ChildAdded:Connect(function()
@@ -674,82 +639,39 @@ function Menu:EnableHELL()
 end
 
 function Menu:DisableHELL()
+    self.hellEnabled = false
+
     if self.hellConnection then
         self.hellConnection:Disconnect()
         self.hellConnection = nil
     end
-    self.hellEnabled = false
+
+    local function restoreValue(shellType, propName, originalValue)
+        local property = shellType:FindFirstChild(propName)
+        if property then
+            property.Value = originalValue
+        end
+    end
 
     for vehicle, originalValues in pairs(self.originalValues) do
         if vehicle.Parent == Vehicles then
-            local gun = vehicle:FindFirstChild("Gun")
-            if gun then
-                local model = gun:FindFirstChildOfClass("Model")
-                if model then
-                    local config = model:FindFirstChild("Config")
-                    if config then
-                        if originalValues.damageMult then
-                            local damageMult = config:FindFirstChild("DamageMult")
-                            if damageMult then
-                                damageMult.Value = originalValues.damageMult
-                            end
-                        end
-                        if originalValues.overheatMult then
-                            local overheatMult = config:FindFirstChild("OverheatMult")
-                            if overheatMult then
-                                overheatMult.Value = originalValues.overheatMult
-                            end
-                        end
-
-                        local shells = config:FindFirstChild("Shells")
-                        if shells then
-                            for _, shellType in pairs(shells:GetChildren()) do
-                                local originalShellValues = originalValues.shells[shellType]
-                                if originalShellValues then
-                                    if originalShellValues.penetration60 then
-                                        local penetration60 = shellType:FindFirstChild("Penetration60")
-                                        if penetration60 then
-                                            penetration60.Value = originalShellValues.penetration60
-                                        end
-                                    end
-                                    if originalShellValues.explosiveMult then
-                                        local explosiveMult = shellType:FindFirstChild("ExplosiveMult")
-                                        if explosiveMult then
-                                            explosiveMult.Value = originalShellValues.explosiveMult
-                                        end
-                                    end
-                                    if originalShellValues.penetration then
-                                        local penetration = shellType:FindFirstChild("Penetration")
-                                        if penetration then
-                                            penetration.Value = originalShellValues.penetration
-                                        end
-                                    end
-                                    if originalShellValues.ricochetAngle then
-                                        local ricochetAngle = shellType:FindFirstChild("RicochetAngle")
-                                        if ricochetAngle then
-                                            ricochetAngle.Value = originalShellValues.ricochetAngle
-                                        end
-                                    end
-                                    if originalShellValues.shellSpeed then
-                                        local shellSpeed = shellType:FindFirstChild("ShellSpeed")
-                                        if shellSpeed then
-                                            shellSpeed.Value = originalShellValues.shellSpeed
-                                        end
-                                    end
-                                    if originalShellValues.bulletGravity then
-                                        local bulletGravity = shellType:FindFirstChild("BulletGravity")
-                                        if bulletGravity then
-                                            bulletGravity.Value = originalShellValues.bulletGravity
-                                        end
-                                    end
-                                end
-                            end
-                        end
+            local shells = vehicle:FindFirstChild("Shells", true)
+            if shells then
+                for _, shellType in pairs(shells:GetChildren()) do
+                    local originalShellValues = originalValues.shells[shellType]
+                    if originalShellValues then
+                        restoreValue(shellType, "Penetration60", originalShellValues.penetration60)
+                        restoreValue(shellType, "ExplosiveMult", originalShellValues.explosiveMult)
+                        restoreValue(shellType, "Penetration", originalShellValues.penetration)
+                        restoreValue(shellType, "RicochetAngle", originalShellValues.ricochetAngle)
+                        restoreValue(shellType, "ShellSpeed", originalShellValues.shellSpeed)
+                        restoreValue(shellType, "BulletGravity", originalShellValues.bulletGravity)
                     end
                 end
             end
         end
     end
+
     self.originalValues = {}
 end
 
