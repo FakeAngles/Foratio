@@ -452,12 +452,10 @@ function Menu:SwitchTab(tabName)
 end
 
 function Menu:EnableESP()
-
     self.espEnabled = true
     self.espLabels = {}
     self.originalMaterials = {}
 
-    local randomFunctionName = generateRandomString(12)
     local function createBillboardGuiESP(vehicle, playerName)
         local randomLabelName = generateRandomString(12)
         if vehicle:FindFirstChild(randomLabelName) then
@@ -486,8 +484,12 @@ function Menu:EnableESP()
         table.insert(self.espLabels, randomLabelName)
     end
 
-    local function changeVehiclePartsToNeon(vehicle)
-        if self.originalMaterials[vehicle] then
+    local function changeVehiclePartsToNeon(vehicle, player)
+        if player.Team == Players.LocalPlayer.Team then
+            return
+        end
+
+        if vehicle:GetAttribute("MaterialChanged") then
             return
         end
 
@@ -495,12 +497,28 @@ function Menu:EnableESP()
 
         for _, part in ipairs(vehicle:GetDescendants()) do
             if part:IsA("BasePart") then
-                self.originalMaterials[vehicle][part] = { Material = part.Material, Color = part.Color }
+                self.originalMaterials[vehicle][part] = {
+                    Material = part.Material,
+                    Color = part.Color
+                }
                 part.Material = Enum.Material.Neon
                 part.Color = Color3.new(1, 0, 0)
             end
         end
+
         vehicle:SetAttribute("MaterialChanged", true)
+
+        vehicle.DescendantAdded:Connect(function(descendant)
+            if descendant:IsA("BasePart") and not descendant:GetAttribute("MaterialChanged") then
+                self.originalMaterials[vehicle][descendant] = {
+                    Material = descendant.Material,
+                    Color = descendant.Color
+                }
+                descendant.Material = Enum.Material.Neon
+                descendant.Color = Color3.new(1, 0, 0)
+                descendant:SetAttribute("MaterialChanged", true)
+            end
+        end)
     end
 
     local function addESPToVehicle(vehicle)
@@ -516,13 +534,14 @@ function Menu:EnableESP()
         end
 
         createBillboardGuiESP(vehicle, player.Name)
-        changeVehiclePartsToNeon(vehicle)
+        changeVehiclePartsToNeon(vehicle, player)
 
         if not CollectionService:HasTag(vehicle, "MonitoredVehicle") then
             CollectionService:AddTag(vehicle, "MonitoredVehicle")
         end
     end
 
+    local randomFunctionName = generateRandomString(10)
     self[randomFunctionName] = function()
         for _, vehicle in pairs(Vehicles:GetChildren()) do
             addESPToVehicle(vehicle)
@@ -530,10 +549,23 @@ function Menu:EnableESP()
 
         self.vehicleAddedConnection = Vehicles.ChildAdded:Connect(function(vehicle)
             if self.espEnabled then
-                addESPToVehicle(vehicle)
+                task.defer(function()
+                    addESPToVehicle(vehicle)
+                end)
+            end
+        end)
+
+        Vehicles.ChildAdded:Connect(function(vehicle)
+            if vehicle:IsA("Model") then
+                vehicle.DescendantAdded:Connect(function(part)
+                    if part:IsA("BasePart") then
+                        changeVehiclePartsToNeon(vehicle, player)
+                    end
+                end)
             end
         end)
     end
+
     self[randomFunctionName]()
 end
 
