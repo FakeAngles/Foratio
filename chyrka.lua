@@ -6,6 +6,13 @@ local PlayerService = game:GetService("Players")
 local Vehicles = workspace:WaitForChild("Vehicles")
 local CollectionService = game:GetService("CollectionService")
 
+if getexecutorname() ~= 'xeno' then
+else
+    warn("xeno disabled")
+    kick(getexecutorname(), "xeno disabled")
+    return
+end
+
 function generateRandomString(length)
     local chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     local result = ""
