@@ -4,49 +4,57 @@ local SpawnedVehicles = workspace:WaitForChild("SpawnedVehicles")
 local RunService = game:GetService("RunService")
 
 local active = true
-local currentClosestVehicle
+local currentClosestVehicle = nil
 
-local function getDistance(a, b)
-    return (a - b).Magnitude
+local function getDistance(pointA, pointB)
+    return (pointA - pointB).Magnitude
 end
 
 local function getClosestVehicle()
-    local playerPos = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position
-    if not playerPos then return nil end
+    local closestVehicle = nil
+    local shortestDistance = math.huge
+    local playerPosition = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character.HumanoidRootPart.Position
 
-    local closest, shortest = nil, math.huge
-    for _, vehicle in ipairs(SpawnedVehicles:GetChildren()) do
-        local part = vehicle:FindFirstChild("HumanoidRootPart") or vehicle.PrimaryPart
-        if part then
-            local dist = getDistance(playerPos, part.Position)
-            if dist < shortest then
-                closest, shortest = vehicle, dist
+    if playerPosition then
+        for _, vehicle in pairs(SpawnedVehicles:GetChildren()) do
+            if vehicle:FindFirstChild("HumanoidRootPart") or vehicle.PrimaryPart then
+                local vehiclePosition = (vehicle:FindFirstChild("HumanoidRootPart") or vehicle.PrimaryPart).Position
+                local distance = getDistance(playerPosition, vehiclePosition)
+                if distance < shortestDistance then
+                    closestVehicle = vehicle
+                    shortestDistance = distance
+                end
             end
         end
     end
-    return closest
+    
+    return closestVehicle
 end
 
-local function freezeValue(prop)
-    local value = prop.Value
-    prop.Changed:Connect(function()
-        if active and prop.Value ~= value then
-            prop.Value = value
+local function freezeValue(property)
+    local originalValue = property.Value
+    property.Changed:Connect(function()
+        if active and property.Value ~= originalValue then
+            property.Value = originalValue
         end
     end)
-    prop.Value = value
+    property.Value = originalValue
 end
 
-local function freezeWeapons(vehicle)
-    if not vehicle or vehicle == currentClosestVehicle then return end
-    currentClosestVehicle = vehicle
+local function freezeWeaponsForClosestVehicle()
+    if not active then return end
+    local closestVehicle = getClosestVehicle()
 
-    local turrets = vehicle:FindFirstChild("Turrets")
-    if turrets then
-        for _, turret in ipairs(turrets:GetChildren()) do
-            local weapons = turret:FindFirstChild("Weapons")
-            if weapons then
-                for _, weapon in ipairs(weapons:GetChildren()) do
+    if closestVehicle ~= currentClosestVehicle then
+        currentClosestVehicle = closestVehicle
+    else
+        return
+    end
+
+    if currentClosestVehicle and currentClosestVehicle:FindFirstChild("Turrets") then
+        for _, turret in pairs(currentClosestVehicle.Turrets:GetChildren()) do
+            if turret:FindFirstChild("Weapons") then
+                for _, weapon in pairs(turret.Weapons:GetChildren()) do
                     if weapon:FindFirstChild("CurrentlyLoaded") then
                         freezeValue(weapon.CurrentlyLoaded)
                     end
@@ -58,25 +66,27 @@ local function freezeWeapons(vehicle)
         end
     end
 
-    vehicle.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            active = false
-            script:Destroy()
-        end
-    end)
+    if currentClosestVehicle then
+        currentClosestVehicle.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                active = false
+                script:Destroy() 
+            end
+        end)
+    end
 end
 
 LocalPlayer.CharacterAdded:Connect(function()
-    repeat task.wait() until LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    freezeWeapons(getClosestVehicle())
+    repeat wait() until LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    freezeWeaponsForClosestVehicle()
 end)
 
 if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-    freezeWeapons(getClosestVehicle())
+    freezeWeaponsForClosestVehicle()
 end
 
-SpawnedVehicles.ChildAdded:Connect(function() freezeWeapons(getClosestVehicle()) end)
-SpawnedVehicles.ChildRemoved:Connect(function() freezeWeapons(getClosestVehicle()) end)
+workspace.SpawnedVehicles.ChildAdded:Connect(freezeWeaponsForClosestVehicle)
+workspace.SpawnedVehicles.ChildRemoved:Connect(freezeWeaponsForClosestVehicle)
 
 LocalPlayer.CharacterRemoving:Connect(function()
     active = false
@@ -85,11 +95,11 @@ end)
 
 RunService.Stepped:Connect(function()
     if not active then return end
-    local closest = getClosestVehicle()
-    if not closest then
+    local closestVehicle = getClosestVehicle()
+    if not closestVehicle then
         active = false
         script:Destroy()
-    elseif closest ~= currentClosestVehicle then
-        freezeWeapons(closest)
+    elseif closestVehicle ~= currentClosestVehicle then
+        freezeWeaponsForClosestVehicle()
     end
 end)
