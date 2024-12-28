@@ -273,7 +273,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/F
 
 
 local Window = Library:CreateWindow({
-    Title = 'Saturn | universal v1.2',
+    Title = 'PasteWare  |  aimwhere',
     Center = true,
     AutoShow = true,  
     TabPadding = 8,
