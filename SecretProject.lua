@@ -1096,12 +1096,14 @@ espbox:AddToggle("EnableESP", {
     end,
 })
 
-
 local localPlayer = game:GetService("Players").LocalPlayer
 local Cmultiplier = 1  
 local isSpeedActive = false
+local isFlyActive = false
 local isFunctionalityEnabled = true  
-
+local flySpeed = 1
+local camera = workspace.CurrentCamera
+local humanoid = nil
 
 frabox:AddToggle("functionalityEnabled", {
     Text = "Enable/Disable CFrame Speed",
@@ -1111,7 +1113,6 @@ frabox:AddToggle("functionalityEnabled", {
         isFunctionalityEnabled = value
     end
 })
-
 
 frabox:AddToggle("speedEnabled", {
     Text = "Speed Toggle",
@@ -1131,7 +1132,6 @@ frabox:AddToggle("speedEnabled", {
     end
 })
 
-
 frabox:AddSlider("cframespeed", {
     Text = "CFrame Multiplier",
     Default = 1,
@@ -1144,21 +1144,74 @@ frabox:AddSlider("cframespeed", {
     end,
 })
 
+frabox:AddToggle("flyEnabled", {
+    Text = "CFly Toggle",
+    Default = false,
+    Tooltip = "Toggle CFrame Fly functionality.",
+    Callback = function(value)
+        isFlyActive = value
+    end
+}):AddKeyPicker("flyToggleKey", {
+    Default = "F",  
+    SyncToggleState = false,
+    Mode = "Toggle",
+    Text = "CFly Toggle Key",
+    Tooltip = "CFrame Fly keybind.",
+    Callback = function(value)
+        isFlyActive = value
+    end
+})
+
+frabox:AddSlider("flySpeed", {
+    Text = "Fly Speed",
+    Default = 1,
+    Min = 1,
+    Max = 50,
+    Rounding = 1,
+    Tooltip = "The CFrame Fly speed.",
+    Callback = function(value)
+        flySpeed = value
+    end,
+})
 
 while true do
     task.wait()
 
     if isFunctionalityEnabled then
         if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local humanoid = localPlayer.Character:FindFirstChild("Humanoid")
-
+            humanoid = localPlayer.Character:FindFirstChild("Humanoid")
+            
             if isSpeedActive and humanoid and humanoid.MoveDirection.Magnitude > 0 then
                 local moveDirection = humanoid.MoveDirection.Unit
                 localPlayer.Character.HumanoidRootPart.CFrame = localPlayer.Character.HumanoidRootPart.CFrame + moveDirection * Cmultiplier
             end
+
+            if isFlyActive then
+                local flyDirection = Vector3.zero
+
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                    flyDirection = flyDirection + camera.CFrame.LookVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                    flyDirection = flyDirection - camera.CFrame.LookVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                    flyDirection = flyDirection - camera.CFrame.RightVector
+                end
+                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                    flyDirection = flyDirection + camera.CFrame.RightVector
+                end
+
+                if flyDirection.Magnitude > 0 then
+                    flyDirection = flyDirection.Unit
+                end
+
+                local newPosition = localPlayer.Character.HumanoidRootPart.Position + flyDirection * flySpeed
+                localPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(newPosition)
+                localPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            end
         end
     end
 end
-
 
 ThemeManager:LoadDefaultTheme()
