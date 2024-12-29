@@ -1163,7 +1163,7 @@ frabox:AddToggle("flyEnabled", {
 })
 
 frabox:AddSlider("flySpeed", {
-    Text = "Fly Speed",
+    Text = "CFly Speed",
     Default = 1,
     Min = 1,
     Max = 50,
