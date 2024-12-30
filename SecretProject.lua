@@ -1100,15 +1100,16 @@ local localPlayer = game:GetService("Players").LocalPlayer
 local Cmultiplier = 1  
 local isSpeedActive = false
 local isFlyActive = false
+local isNoClipActive = false
 local isFunctionalityEnabled = true  
 local flySpeed = 1
 local camera = workspace.CurrentCamera
 local humanoid = nil
 
 frabox:AddToggle("functionalityEnabled", {
-    Text = "Enable/Disable CFrame Speed",
+    Text = "Enable/Disable movement",
     Default = true,
-    Tooltip = "Enable or disable the speed thingy.",
+    Tooltip = "Enable or disable.",
     Callback = function(value)
         isFunctionalityEnabled = value
     end
@@ -1123,7 +1124,7 @@ frabox:AddToggle("speedEnabled", {
     end
 }):AddKeyPicker("speedToggleKey", {
     Default = "C",  
-    SyncToggleState = false,
+    SyncToggleState = true,
     Mode = "Toggle",
     Text = "Speed Toggle Key",
     Tooltip = "CFrame keybind.",
@@ -1153,7 +1154,7 @@ frabox:AddToggle("flyEnabled", {
     end
 }):AddKeyPicker("flyToggleKey", {
     Default = "F",  
-    SyncToggleState = false,
+    SyncToggleState = true,
     Mode = "Toggle",
     Text = "CFly Toggle Key",
     Tooltip = "CFrame Fly keybind.",
@@ -1172,6 +1173,24 @@ frabox:AddSlider("flySpeed", {
     Callback = function(value)
         flySpeed = value
     end,
+})
+
+frabox:AddToggle("noClipEnabled", {
+    Text = "NoClip Toggle",
+    Default = false,
+    Tooltip = "Enable or disable NoClip.",
+    Callback = function(value)
+        isNoClipActive = value
+    end
+}):AddKeyPicker("noClipToggleKey", {
+    Default = "N",
+    SyncToggleState = true,
+    Mode = "Toggle",
+    Text = "NoClip Toggle Key",
+    Tooltip = "Keybind to toggle NoClip.",
+    Callback = function(value)
+        isNoClipActive = value
+    end
 })
 
 while true do
@@ -1209,6 +1228,14 @@ while true do
                 local newPosition = localPlayer.Character.HumanoidRootPart.Position + flyDirection * flySpeed
                 localPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(newPosition)
                 localPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+            end
+
+            if isNoClipActive then
+                for _, v in pairs(localPlayer.Character:GetDescendants()) do
+                    if v:IsA("BasePart") and v.CanCollide then
+                        v.CanCollide = false
+                    end
+                end
             end
         end
     end
