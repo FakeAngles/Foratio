@@ -337,6 +337,8 @@ local GeneralTab = Window:AddTab("Main")
 local aimbox = GeneralTab:AddRightGroupbox("AimLock settings")
 local velbox = GeneralTab:AddRightGroupbox("Anti Lock")
 local frabox = GeneralTab:AddRightGroupbox("Movement")
+local ExploitTab = Window:AddTab("Exploits")
+local WarTycoonBox = ExploitTab:AddLeftGroupbox("War Tycoon")
 local settingsTab = Window:AddTab("Settings")
 
 
@@ -344,10 +346,6 @@ ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 ThemeManager:ApplyToTab(settingsTab)
 SaveManager:BuildConfigSection(settingsTab)
-
-
-
-
 
 aimbox:AddToggle("aimLock_Enabled", {
     Text = "enable/disable AimLock",
@@ -360,9 +358,8 @@ aimbox:AddToggle("aimLock_Enabled", {
             isLockedOn = false
             targetPlayer = nil
         end
-    end,
+    end
 })
-
 
 aimbox:AddToggle("aim_Enabled", {
     Text = "aimlock keybind",
@@ -1190,6 +1187,55 @@ frabox:AddToggle("noClipEnabled", {
     Tooltip = "Keybind to toggle NoClip.",
     Callback = function(value)
         isNoClipActive = value
+    end
+})
+
+local hookEnabled = false
+local oldNamecall
+
+local function enableBulletHitManipulation(value)
+    BManipulation = value
+    local remote = game:GetService("ReplicatedStorage").BulletFireSystem.BulletHit
+
+    if BManipulation then
+        if not hookEnabled then
+            hookEnabled = true
+            oldNamecall = hookmetamethod(remote, "__namecall", newcclosure(function(self, ...)
+                if typeof(self) == "Instance" then
+                    local method = getnamecallmethod()
+                    if method and (method == "FireServer" and self == remote) then
+                        local HitPart = getClosestPlayer()
+                        if HitPart then
+                            local remArgs = {...}
+                            remArgs[2] = HitPart
+                            remArgs[3] = HitPart.Position
+                            setnamecallmethod(method)
+                            return oldNamecall(self, unpack(remArgs))
+                        else
+                            setnamecallmethod(method)
+                        end
+                    end
+                end
+                return oldNamecall(self, ...)
+            end))
+        end
+    else
+        BsManipulation = false
+        if hookEnabled then
+            hookEnabled = false
+            if oldNamecall then
+                hookmetamethod(remote, "__namecall", oldNamecall)
+            end
+        end
+    end
+end
+
+WarTycoonBox:AddToggle("BulletHit manipulation", {
+    Text = "Magic bullet [beta]",
+    Default = false,
+    Tooltip = "Magic Bullet?",
+    Callback = function(value)
+        enableBulletHitManipulation(value)
     end
 })
 
