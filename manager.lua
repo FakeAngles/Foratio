@@ -202,7 +202,7 @@ local SaveManager = {} do
 		assert(self.Library, 'Must set SaveManager.Library')
 	
 		local section = tab:AddRightGroupbox('Configuration')
-		local menuSection = tab:AddRightGroupbox('Menu') -- Переименовал для ясности
+		local menuSection = tab:AddRightGroupbox('Menu')
 	
 		menuSection:AddKeyPicker("MenuToggleKey", {
 			Default = "RightControl", 
