@@ -1180,7 +1180,6 @@ ACSEngineBox:AddButton('INF AMMO', function()
 
     local player = game:GetService("Players").LocalPlayer
     local backpack = player:WaitForChild("Backpack")
-
     local foundModules = {}
     for _, item in pairs(backpack:GetChildren()) do
         local settingsModule = findSettingsModule(item)
@@ -1196,12 +1195,12 @@ ACSEngineBox:AddButton('INF AMMO', function()
     end
 end)
 
-ACSEngineBox:AddButton('RAPID FIRE', function()
+ACSEngineBox:AddButton('NO RECOIL | NO SPREAD', function()
     local function findSettingsModule(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("ModuleScript") then
                 local success, module = pcall(function() return require(child) end)
-                if success and module and (module.ShootRate or module.FireRate) then
+                if success and module then
                     return module
                 end
             end
@@ -1226,14 +1225,167 @@ ACSEngineBox:AddButton('RAPID FIRE', function()
 
     if #foundModules > 0 then
         for _, module in pairs(foundModules) do
-            if module.ShootRate then
-                module.ShootRate = 8888
-            elseif module.FireRate then
-                module.FireRate = 8888
+            if module.VRecoil then
+                module.VRecoil = {0, 0}
+            end
+            if module.HRecoil then
+                module.HRecoil = {0, 0}
+            end
+            if module.MinSpread then
+                module.MinSpread = 0
+            end
+            if module.MaxSpread then
+                module.MaxSpread = 0
+            end
+            if module.RecoilPunch then
+                module.RecoilPunch = 0
+            end
+            if module.AimRecoilReduction then
+                module.AimRecoilReduction = 0
             end
         end
     end
 end)
+
+ACSEngineBox:AddButton('INF BULLET DISTANCE', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and module.Distance then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            module.Distance = 25000 
+        end
+    end
+end)
+
+
+ACSEngineBox:AddInput("BulletSpeedInput", {
+    Text = "Bullet Speed",
+    Default = "10000",
+    Tooltip = "Set the bullet speed",
+    Callback = function(value)
+        getgenv().bulletSpeedValue = tonumber(value) or 10000
+    end
+})
+
+ACSEngineBox:AddButton('CHANGE BULLET SPEED', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local bulletSpeed = getgenv().bulletSpeedValue or 10000
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            if module.BSpeed then
+                module.BSpeed = bulletSpeed
+            end
+            if module.MuzzleVelocity then
+                module.MuzzleVelocity = bulletSpeed
+            end
+        end
+    end
+end)
+
+local fireRateInput
+fireRateInput = ACSEngineBox:AddInput('FireRateInput', {
+    Text = 'Enter Fire Rate',
+    Default = '8888',  
+    Tooltip = 'Type the fire rate value you want to apply.',
+})
+
+ACSEngineBox:AddButton('CHANGE FIRE RATE', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and (module.FireRate or module.ShootRate) then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+    local fireRate = tonumber(fireRateInput.Value) or 8888
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            if module.FireRate then
+                module.FireRate = fireRate
+            elseif module.ShootRate then
+                module.ShootRate = fireRate
+            end
+        end
+    end
+end)
+
+local bulletsInput = ACSEngineBox:AddInput('BulletsInput', {
+    Text = 'Enter Bullets',
+    Default = '50',
+    Tooltip = 'Type the number of bullets you want to apply.',
+    Numeric = true 
+})
 
 ACSEngineBox:AddButton('MULTI BULLETS', function()
     local function findSettingsModule(parent)
@@ -1252,9 +1404,13 @@ ACSEngineBox:AddButton('MULTI BULLETS', function()
         return nil
     end
 
+    local bulletsValue = tonumber(Options.BulletsInput.Value)
+    if not bulletsValue or bulletsValue <= 0 then
+        bulletsValue = 50 
+    end
+
     local player = game:GetService("Players").LocalPlayer
     local backpack = player:WaitForChild("Backpack")
-
     local foundModules = {}
     for _, item in pairs(backpack:GetChildren()) do
         local settingsModule = findSettingsModule(item)
@@ -1265,12 +1421,19 @@ ACSEngineBox:AddButton('MULTI BULLETS', function()
 
     if #foundModules > 0 then
         for _, module in pairs(foundModules) do
-            module.Bullets = 50
+            module.Bullets = bulletsValue
         end
     end
 end)
 
-ACSEngineBox:AddButton('AUTO FIRE MODE', function()
+local inputField
+inputField = ACSEngineBox:AddInput('FireModeInput', {
+    Text = 'Enter Fire Mode',
+    Default = 'Auto', 
+    Tooltip = 'Type the fire mode you want to apply.',
+})
+
+ACSEngineBox:AddButton('CHANGE FIRE MODE', function()
     local function findSettingsModule(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("ModuleScript") then
@@ -1289,7 +1452,7 @@ ACSEngineBox:AddButton('AUTO FIRE MODE', function()
 
     local player = game:GetService("Players").LocalPlayer
     local backpack = player:WaitForChild("Backpack")
-
+    local fireMode = inputField.Value or 'Auto'
     local foundModules = {}
     for _, item in pairs(backpack:GetChildren()) do
         local settingsModule = findSettingsModule(item)
@@ -1300,10 +1463,12 @@ ACSEngineBox:AddButton('AUTO FIRE MODE', function()
 
     if #foundModules > 0 then
         for _, module in pairs(foundModules) do
-            module.Mode = "Auto"
+            module.Mode = fireMode
         end
     end
 end)
+
+
 
 while true do
     task.wait()
