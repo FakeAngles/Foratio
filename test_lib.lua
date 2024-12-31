@@ -258,6 +258,25 @@ local SaveManager = {} do
 			self.Library:Notify(string.format('Set %q to auto load', name))
 		end)
 
+		section:AddToggle("ToggleKeybindEnabled", {
+			Text = "Toggle Keybind",
+			Default = false,
+			Tooltip = "Enable or disable the keybind toggle.",
+			Callback = function(value)
+				Library.ToggleKeybindEnabled = value
+			end
+		}):AddKeyPicker("ToggleKeybind", {
+			Default = Enum.KeyCode.RightControl.Name, 
+			SyncToggleState = true,
+			Mode = "Toggle",
+			Text = "Toggle Keybind",
+			Tooltip = "Keybind to toggle the action.",
+			Callback = function(value)
+				local key = Enum.KeyCode[value]
+				Library.ToggleKeybind = key or Enum.KeyCode.RightControl
+			end
+		})
+
 		SaveManager.AutoloadLabel = section:AddLabel('Current autoload config: none', true)
 
 		if isfile(self.Folder .. '/settings/autoload.txt') then
@@ -270,24 +289,5 @@ local SaveManager = {} do
 
 	SaveManager:BuildFolderTree()
 end
-
-section:AddToggle("ToggleKeybindEnabled", {
-    Text = "Toggle Keybind",
-    Default = false,
-    Tooltip = "Enable or disable the keybind toggle.",
-    Callback = function(value)
-        Library.ToggleKeybindEnabled = value
-    end
-}):AddKeyPicker("ToggleKeybind", {
-    Default = Enum.KeyCode.RightControl.Name, 
-    SyncToggleState = true,
-    Mode = "Toggle",
-    Text = "Toggle Keybind",
-    Tooltip = "Keybind to toggle the action.",
-    Callback = function(value)
-        local key = Enum.KeyCode[value]
-        Library.ToggleKeybind = key or Enum.KeyCode.RightControl
-    end
-})
 
 return SaveManager
