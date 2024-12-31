@@ -339,6 +339,7 @@ local velbox = GeneralTab:AddRightGroupbox("Anti Lock")
 local frabox = GeneralTab:AddRightGroupbox("Movement")
 local ExploitTab = Window:AddTab("Exploits")
 local WarTycoonBox = ExploitTab:AddLeftGroupbox("War Tycoon")
+local ACSEngineBox = ExploitTab:AddRightGroupbox("weapon settings")
 local settingsTab = Window:AddTab("Settings")
 
 
@@ -897,10 +898,6 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera 
 local LocalPlayer = Players.LocalPlayer 
 
-local healthBars = {}
-local Settings = { HealthBar = false } 
-
-
 local function createSquare(color, size, outlineColor)
     local square = Drawing.new("Square")
     square.Visible = false
@@ -913,72 +910,6 @@ local function createSquare(color, size, outlineColor)
 end
 
 local espbox = GeneralTab:AddLeftGroupbox("esp")
-
-local function updateHealthBars()
-    local cameraCFrame = Camera.CFrame
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            local healthBar = healthBars[player]
-            if not healthBar then
-                healthBar = createSquare(Color3.fromRGB(0, 255, 0), Vector2.new(4, 40), Color3.fromRGB(0, 0, 0))
-                healthBars[player] = healthBar
-            end
-
-            local character = player.Character
-            if Settings.HealthBar and character and character:FindFirstChild("Humanoid") and character:FindFirstChild("HumanoidRootPart") then
-                local humanoid = character.Humanoid
-                local humanoidRootPart = character.HumanoidRootPart
-
-                if humanoid.Health > 0 then
-                    local pos, visible = Camera:WorldToViewportPoint(humanoidRootPart.Position + Vector3.new(2.5, 0, 0))
-                    if visible then
-                        local healthPercent = humanoid.Health / humanoid.MaxHealth
-                        local distance = (cameraCFrame.Position - humanoidRootPart.Position).Magnitude
-                        local scale = math.clamp(1 / (distance * 0.02), 0.5, 2.5)
-
-                        local healthBarSize = Vector2.new(4 * scale, 40 * scale * healthPercent)
-                        healthBar.Visible = true
-                        healthBar.Position = Vector2.new(pos.X, pos.Y) - Vector2.new(0, healthBarSize.Y / 2)
-
-                        if healthPercent > 0.5 then
-                            healthBar.Color = Color3.fromRGB((1 - healthPercent) * 510, 255, 0)
-                        else
-                            healthBar.Color = Color3.fromRGB(255, healthPercent * 510, 0)
-                        end
-
-                        healthBar.Size = healthBarSize
-                    else
-                        healthBar.Visible = false
-                    end
-                else
-                    healthBar.Visible = false
-                end
-            else
-                healthBar.Visible = false
-            end
-        end
-    end
-end
-
-
-Players.PlayerAdded:Connect(function(player)
-    healthBars[player] = createSquare(Color3.fromRGB(0, 255, 0), Vector2.new(4, 40), Color3.fromRGB(0, 0, 0))
-end)
-
-
-Players.PlayerRemoving:Connect(function(player)
-    local healthBar = healthBars[player]
-    if healthBar then
-        healthBar.Visible = false
-        healthBar:Remove()
-        healthBars[player] = nil
-    end
-end)
-
-
-RunService.RenderStepped:Connect(updateHealthBars)
-
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -1069,15 +1000,6 @@ espbox:AddToggle("EnableTracer", {
             end
         end
     end,
-})
-
-espbox:AddToggle("Healthbar", {
-    Text = "Health Bar",
-    Default = false,
-    Tooltip = "Toggle health bars for players",
-    Callback = function(Value)
-        Settings.HealthBar = Value
-    end
 })
 
 espbox:AddToggle("EnableESP", {
@@ -1238,6 +1160,150 @@ WarTycoonBox:AddToggle("BulletHit manipulation", {
         enableBulletHitManipulation(value)
     end
 })
+
+ACSEngineBox:AddButton('INF AMMO', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and module.Ammo then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            module.Ammo = math.huge
+        end
+    end
+end)
+
+ACSEngineBox:AddButton('RAPID FIRE', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and (module.ShootRate or module.FireRate) then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            if module.ShootRate then
+                module.ShootRate = 8888
+            elseif module.FireRate then
+                module.FireRate = 8888
+            end
+        end
+    end
+end)
+
+ACSEngineBox:AddButton('MULTI BULLETS', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and module.Bullets then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            module.Bullets = 50
+        end
+    end
+end)
+
+ACSEngineBox:AddButton('AUTO FIRE MODE', function()
+    local function findSettingsModule(parent)
+        for _, child in pairs(parent:GetChildren()) do
+            if child:IsA("ModuleScript") then
+                local success, module = pcall(function() return require(child) end)
+                if success and module and module.Mode then
+                    return module
+                end
+            end
+            local found = findSettingsModule(child)
+            if found then
+                return found
+            end
+        end
+        return nil
+    end
+
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:WaitForChild("Backpack")
+
+    local foundModules = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        local settingsModule = findSettingsModule(item)
+        if settingsModule then
+            table.insert(foundModules, settingsModule)
+        end
+    end
+
+    if #foundModules > 0 then
+        for _, module in pairs(foundModules) do
+            module.Mode = "Auto"
+        end
+    end
+end)
 
 while true do
     task.wait()
