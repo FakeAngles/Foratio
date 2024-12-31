@@ -200,29 +200,40 @@ local SaveManager = {} do
 
 	function SaveManager:BuildConfigSection(tab)
 		assert(self.Library, 'Must set SaveManager.Library')
-
+	
 		local section = tab:AddRightGroupbox('Configuration')
-		local section = tab:AddRightGroupbox('Menu')
-
-		section:AddInput('SaveManager_ConfigName',    { Text = 'Config name' })
+		local menuSection = tab:AddRightGroupbox('Menu') -- Переименовал для ясности
+	
+		menuSection:AddKeyPicker("MenuToggleKey", {
+			Default = "RightControl", 
+			SyncToggleState = false, 
+			Mode = "Always", 
+			Text = "Menu Toggle Key",
+			Tooltip = "Key to toggle the menu visibility.",
+			Callback = function(newKey)
+				Library.ToggleKeybind = { Type = "KeyPicker", Value = newKey }
+			end
+		})
+	
+		section:AddInput('SaveManager_ConfigName', { Text = 'Config name' })
 		section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
-
+	
 		section:AddDivider()
-
+	
 		section:AddButton('Create config', function()
 			local name = Options.SaveManager_ConfigName.Value
-
+	
 			if name:gsub(' ', '') == '' then 
 				return self.Library:Notify('Invalid config name (empty)', 2)
 			end
-
+	
 			local success, err = self:Save(name)
 			if not success then
 				return self.Library:Notify('Failed to save config: ' .. err)
 			end
-
+	
 			self.Library:Notify(string.format('Created config %q', name))
-
+	
 			Options.SaveManager_ConfigList:SetValues(self:RefreshConfigList())
 			Options.SaveManager_ConfigList:SetValue(nil)
 		end):AddButton('Load config', function()
@@ -271,17 +282,5 @@ local SaveManager = {} do
 
 	SaveManager:BuildFolderTree()
 end
-
-section:AddKeyPicker("MenuToggleKey", {
-    Default = "RightControl", 
-    SyncToggleState = false, 
-    Mode = "Always", 
-    Text = "Menu Toggle Key",
-    Tooltip = "Key to toggle the menu visibility.",
-    Callback = function(newKey)
-        Library.ToggleKeybind = { Type = "KeyPicker", Value = newKey }
-    end
-})
-
 
 return SaveManager
