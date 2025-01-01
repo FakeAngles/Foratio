@@ -340,6 +340,7 @@ local frabox = GeneralTab:AddRightGroupbox("Movement")
 local ExploitTab = Window:AddTab("Exploits")
 local WarTycoonBox = ExploitTab:AddLeftGroupbox("War Tycoon")
 local ACSEngineBox = ExploitTab:AddRightGroupbox("weapon settings")
+local VisualsTab = Window:AddTab("Visuals")
 local settingsTab = Window:AddTab("Settings")
 
 
@@ -909,7 +910,7 @@ local function createSquare(color, size, outlineColor)
     return square
 end
 
-local espbox = GeneralTab:AddLeftGroupbox("esp")
+local espbox = VisualsTab:AddLeftGroupbox("esp")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -1259,6 +1260,138 @@ inputField = ACSEngineBox:AddInput('FireModeInput', {
 
 ACSEngineBox:AddButton('CHANGE FIRE MODE', function()
     modifyWeaponSettings("Mode", inputField.Value or 'Auto')
+end)
+
+local targetStrafe = GeneralTab:AddLeftGroupbox("Target Strafe")
+
+local strafeEnabled = false
+local strafeSpeed = 50
+local strafeRadius = 5
+
+local targetPlayer = nil 
+local function updateFovCirclePosition(targetPosition)
+    if Toggles.Visible.Value then
+        local fov_circle = getFovCircle()
+        fov_circle.Position = Vector2.new(targetPosition.X, targetPosition.Y)
+        fov_circle.Radius = Options.Radius.Value 
+    end
+end
+
+local function getClosestPlayer()
+    local nearestPlayer = nil
+    local shortestDistance = math.huge
+    local mousePosition = Camera:ViewportPointToRay(Mouse.X, Mouse.Y).Origin
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local part = player.Character.Head
+            local screenPosition, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local distance = (Vector2.new(screenPosition.X, screenPosition.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if distance < shortestDistance then
+                    nearestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+    return nearestPlayer
+end
+
+local function startTargetStrafe()
+    targetPlayer = getClosestPlayer()
+    if targetPlayer and targetPlayer.Character then
+        LocalPlayer.Character:SetPrimaryPartCFrame(targetPlayer.Character.HumanoidRootPart.CFrame)
+        Camera.CameraSubject = targetPlayer.Character.Humanoid
+        updateFovCirclePosition(targetPlayer.Character.HumanoidRootPart.Position)
+        targetPlayer.Character:WaitForChild("Humanoid").Died:Connect(function()
+            stopTargetStrafe()
+        end)
+        targetPlayer.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                stopTargetStrafe()
+            end
+        end)
+    end
+end
+
+local function strafeAroundTarget()
+    if targetPlayer and targetPlayer.Character then
+        local targetPosition = targetPlayer.Character.HumanoidRootPart.Position
+        game:GetService("Players").LocalPlayer.CameraMode = Enum.CameraMode.Classic
+        local randomOffset = Vector3.new(
+            math.random(-strafeRadius, strafeRadius),
+            0,
+            math.random(-strafeRadius, strafeRadius)
+        )
+        LocalPlayer.Character:SetPrimaryPartCFrame(CFrame.new(targetPosition + randomOffset))
+        LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, targetPlayer.Character.HumanoidRootPart.Position)
+        updateFovCirclePosition(targetPosition)
+    end
+end
+
+local function stopTargetStrafe()
+    Camera.CameraSubject = LocalPlayer.Character.Humanoid
+    strafeEnabled = false
+    targetPlayer = nil
+end
+
+targetStrafe:AddToggle("strafeToggle", {
+    Text = "Enable Target Strafe",
+    Default = false,
+    Tooltip = "Enable or disable Target Strafe.",
+    Callback = function(value)
+        strafeEnabled = value
+        if strafeEnabled then
+            startTargetStrafe()
+        else
+            stopTargetStrafe()
+        end
+    end
+}):AddKeyPicker("strafeToggleKey", {
+    Default = "L",  
+    SyncToggleState = true,
+    Mode = "Toggle",
+    Text = "Target Strafe Toggle Key",
+    Tooltip = "Key to toggle Target Strafe",
+    Callback = function()
+        strafeEnabled = value
+        if strafeEnabled then
+            startTargetStrafe()
+        else
+            stopTargetStrafe()
+        end
+    end
+})
+
+targetStrafe:AddSlider("strafeRadiusSlider", {
+    Text = "Strafe Radius",
+    Default = 5,
+    Min = 1,
+    Max = 20,
+    Rounding = 1,
+    Tooltip = "Set the radius of movement around the target.",
+    Callback = function(value)
+        strafeRadius = value
+    end
+})
+
+targetStrafe:AddSlider("strafeSpeedSlider", {
+    Text = "Strafe Speed",
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 1,
+    Tooltip = "Set the speed of strafing around the target.",
+    Callback = function(value)
+        strafeSpeed = value
+    end
+})
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    if strafeEnabled then
+        strafeAroundTarget() 
+    end
 end)
 
 while true do
