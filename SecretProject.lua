@@ -1253,11 +1253,23 @@ local function modifyWeaponSettings(property, value)
 
     local player = game:GetService("Players").LocalPlayer
     local backpack = player:WaitForChild("Backpack")
+    local character = player.Character or player.CharacterAdded:Wait()
     local foundModules = {}
-    for _, item in pairs(backpack:GetChildren()) do
-        local settingsModule = findSettingsModule(item)
-        if settingsModule then
-            table.insert(foundModules, settingsModule)
+
+    if getgenv().WeaponOnHands then
+        local toolInHand = character:FindFirstChildOfClass("Tool")
+        if toolInHand then
+            local settingsModule = findSettingsModule(toolInHand)
+            if settingsModule then
+                table.insert(foundModules, settingsModule)
+            end
+        end
+    else
+        for _, item in pairs(backpack:GetChildren()) do
+            local settingsModule = findSettingsModule(item)
+            if settingsModule then
+                table.insert(foundModules, settingsModule)
+            end
         end
     end
 
@@ -1267,6 +1279,15 @@ local function modifyWeaponSettings(property, value)
         end
     end
 end
+
+ACSEngineBox:AddToggle("WeaponOnHands", {
+    Text = "Weapon In Hands",
+    Default = false,
+    Tooltip = "Apply changes only to the weapon in hands if enabled.",
+    Callback = function(value)
+        getgenv().WeaponOnHands = value
+    end
+})
 
 ACSEngineBox:AddButton('INF AMMO', function()
     modifyWeaponSettings("Ammo", math.huge)
