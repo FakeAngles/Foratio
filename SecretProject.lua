@@ -817,41 +817,52 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 
-local BOXEnabled = false
-local espBoxes = {}
-
+local BOXEnabled, TRAEnabled, NameTagsEnabled, teamCheckEnabled = false, false, false, false
+local espBoxes, espTracers, espNameTags = {}, {}, {}
+local boxColor, tracerColor, nameTagColor = Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255)
 
 local function createESPBox(color)
     local box = Drawing.new("Square")
-    box.Color = color
-    box.Thickness = 1
-    box.Filled = false
-    box.Visible = false
+    box.Color, box.Thickness, box.Filled, box.Visible = color, 1, false, false
     return box
 end
 
+local function createTracer(color)
+    local tracer = Drawing.new("Line")
+    tracer.Color, tracer.Thickness, tracer.Visible = color, 2, false
+    return tracer
+end
+
+local function createNameTag(color, text)
+    local nameTag = Drawing.new("Text")
+    nameTag.Color, nameTag.Text, nameTag.Size, nameTag.Center, nameTag.Outline, nameTag.OutlineColor, nameTag.Visible = color, text, 15, true, true, Color3.fromRGB(0, 0, 0), false
+    return nameTag
+end
+
+local function smoothInterpolation(from, to, factor)
+    return from + (to - from) * factor
+end
 
 local function updateESPBoxes()
     if BOXEnabled then
         for player, box in pairs(espBoxes) do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local rootPart = player.Character.HumanoidRootPart
-                local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-
-                if onScreen then
-                    local distance = screenPosition.Z
-                    local scaleFactor = 70 / distance 
-                    local boxWidth = 30 * scaleFactor 
-                    local boxHeight = 50 * scaleFactor 
-
-                    local boxX = screenPosition.X - boxWidth / 2
-                    local boxY = screenPosition.Y - boxHeight / 2
-
-                    box.Size = Vector2.new(boxWidth, boxHeight)
-                    box.Position = Vector2.new(boxX, boxY)
-                    box.Visible = true
-                else
+                if teamCheckEnabled and player.Team == Players.LocalPlayer.Team then
                     box.Visible = false
+                else
+                    local rootPart = player.Character.HumanoidRootPart
+                    local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                    if onScreen then
+                        local distance = screenPosition.Z
+                        local scaleFactor = 70 / distance
+                        local boxWidth = 30 * scaleFactor
+                        local boxHeight = 50 * scaleFactor
+                        box.Size = Vector2.new(boxWidth, boxHeight)
+                        box.Position = Vector2.new(screenPosition.X - boxWidth / 2, screenPosition.Y - boxHeight / 2)
+                        box.Visible = true
+                    else
+                        box.Visible = false
+                    end
                 end
             else
                 box.Visible = false
@@ -860,94 +871,24 @@ local function updateESPBoxes()
     end
 end
 
-
-local function addESP(player)
-    if player ~= Players.LocalPlayer then
-        local box = createESPBox(Color3.fromRGB(255, 255, 255)) 
-        espBoxes[player] = box
-
-        player.CharacterAdded:Connect(function()
-            espBoxes[player] = box
-        end)
-    end
-end
-
-
-local function removeESP(player)
-    if espBoxes[player] then
-        espBoxes[player].Visible = false  
-        espBoxes[player] = nil
-    end
-end
-
-
-Players.PlayerAdded:Connect(addESP)
-Players.PlayerRemoving:Connect(removeESP)
-
-
-for _, player in pairs(Players:GetPlayers()) do
-    addESP(player)
-end
-
-
-RunService.RenderStepped:Connect(updateESPBoxes)
-
-
-
-local Players = game:GetService("Players") 
-local RunService = game:GetService("RunService") 
-local Camera = workspace.CurrentCamera 
-local LocalPlayer = Players.LocalPlayer 
-
-local function createSquare(color, size, outlineColor)
-    local square = Drawing.new("Square")
-    square.Visible = false
-    square.Center = true
-    square.Outline = true
-    square.OutlineColor = outlineColor or Color3.fromRGB(0, 0, 0)
-    square.Size = size or Vector2.new(4, 40)
-    square.Color = color or Color3.fromRGB(0, 255, 0)
-    return square
-end
-
-local espbox = VisualsTab:AddLeftGroupbox("esp")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-
-local TRAEnabled = false
-local espTracers = {}
-
-local function createTracer(color)
-    local tracer = Drawing.new("Line")
-    tracer.Color = color
-    tracer.Thickness = 2
-    tracer.Visible = false
-    return tracer
-end
-
-local function smoothInterpolation(from, to, factor)
-    return from + (to - from) * factor
-end
-
-
 local function updateTracers()
     if TRAEnabled then
         for player, tracer in pairs(espTracers) do
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local rootPart = player.Character.HumanoidRootPart
-                local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
-
-                if onScreen then
-
-                    local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    local targetPosition = Vector2.new(screenPosition.X, screenPosition.Y)
-                    tracer.From = smoothInterpolation(tracer.From, screenCenter, 0.1)
-                    tracer.To = smoothInterpolation(tracer.To, targetPosition, 0.1)
-
-                    tracer.Visible = true
-                else
+                if teamCheckEnabled and player.Team == Players.LocalPlayer.Team then
                     tracer.Visible = false
+                else
+                    local rootPart = player.Character.HumanoidRootPart
+                    local screenPosition, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                    if onScreen then
+                        local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                        local targetPosition = Vector2.new(screenPosition.X, screenPosition.Y)
+                        tracer.From = smoothInterpolation(tracer.From, screenCenter, 0.1)
+                        tracer.To = smoothInterpolation(tracer.To, targetPosition, 0.1)
+                        tracer.Visible = true
+                    else
+                        tracer.Visible = false
+                    end
                 end
             else
                 tracer.Visible = false
@@ -956,18 +897,64 @@ local function updateTracers()
     end
 end
 
+local function updateNameTags()
+    if NameTagsEnabled then
+        for player, nameTag in pairs(espNameTags) do
+            if player.Character and player.Character:FindFirstChild("Head") then
+                if teamCheckEnabled and player.Team == Players.LocalPlayer.Team then
+                    nameTag.Visible = false
+                else
+                    local headPosition, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                    if onScreen then
+                        nameTag.Position = Vector2.new(headPosition.X, headPosition.Y - 30)
+                        nameTag.Visible = true
+                    else
+                        nameTag.Visible = false
+                    end
+                end
+            else
+                nameTag.Visible = false
+            end
+        end
+    end
+end
+
+local function addESP(player)
+    if player ~= Players.LocalPlayer then
+        local box = createESPBox(boxColor)
+        espBoxes[player] = box
+        player.CharacterAdded:Connect(function()
+            espBoxes[player] = box
+        end)
+    end
+end
 
 local function addTracer(player)
     if player ~= Players.LocalPlayer then
-        local tracer = createTracer(Color3.fromRGB(255, 255, 255)) 
+        local tracer = createTracer(tracerColor)
         espTracers[player] = tracer
-
         player.CharacterAdded:Connect(function()
             espTracers[player] = tracer
         end)
     end
 end
 
+local function addNameTag(player)
+    if player ~= Players.LocalPlayer then
+        local nameTag = createNameTag(nameTagColor, player.Name)
+        espNameTags[player] = nameTag
+        player.CharacterAdded:Connect(function()
+            espNameTags[player] = nameTag
+        end)
+    end
+end
+
+local function removeESP(player)
+    if espBoxes[player] then
+        espBoxes[player].Visible = false
+        espBoxes[player] = nil
+    end
+end
 
 local function removeTracer(player)
     if espTracers[player] then
@@ -976,29 +963,67 @@ local function removeTracer(player)
     end
 end
 
-
-Players.PlayerAdded:Connect(addTracer)
-Players.PlayerRemoving:Connect(removeTracer)
-
-
-for _, player in pairs(Players:GetPlayers()) do
-    addTracer(player)
+local function removeNameTag(player)
+    if espNameTags[player] then
+        espNameTags[player].Visible = false
+        espNameTags[player] = nil
+    end
 end
 
+Players.PlayerAdded:Connect(addESP)
+Players.PlayerRemoving:Connect(removeESP)
+Players.PlayerAdded:Connect(addTracer)
+Players.PlayerRemoving:Connect(removeTracer)
+Players.PlayerAdded:Connect(addNameTag)
+Players.PlayerRemoving:Connect(removeNameTag)
 
+for _, player in pairs(Players:GetPlayers()) do
+    addESP(player)
+    addTracer(player)
+    addNameTag(player)
+end
+
+RunService.RenderStepped:Connect(updateESPBoxes)
 RunService.RenderStepped:Connect(updateTracers)
+RunService.RenderStepped:Connect(updateNameTags)
 
+local espbox = VisualsTab:AddLeftGroupbox("esp")
 
-espbox:AddToggle("EnableTracer", {
-    Text = "Enable Tracers",
+espbox:AddToggle("TeamCheck", {
+    Text = "Enable Team Check",
     Default = false,
     Callback = function(state)
-        TRAEnabled = state
-
-        if not TRAEnabled then
-            for _, tracer in pairs(espTracers) do
+        teamCheckEnabled = state
+        for player, box in pairs(espBoxes) do
+            if player.Team == Players.LocalPlayer.Team then
+                box.Visible = false
+            end
+        end
+        for player, tracer in pairs(espTracers) do
+            if player.Team == Players.LocalPlayer.Team then
                 tracer.Visible = false
             end
+        end
+        for player, nameTag in pairs(espNameTags) do
+            if player.Team == Players.LocalPlayer.Team then
+                nameTag.Visible = false
+            end
+        end
+    end,
+})
+
+espbox:AddToggle("EspTeamColor", {
+    Text = "ESP Team Color",
+    Default = false,
+    Callback = function(state)
+        for player, box in pairs(espBoxes) do
+            box.Color = state and player.TeamColor.Color or boxColor
+        end
+        for player, tracer in pairs(espTracers) do
+            tracer.Color = state and player.TeamColor.Color or tracerColor
+        end
+        for player, nameTag in pairs(espNameTags) do
+            nameTag.Color = state and player.TeamColor.Color or nameTagColor
         end
     end,
 })
@@ -1008,10 +1033,57 @@ espbox:AddToggle("EnableESP", {
     Default = false,
     Callback = function(state)
         BOXEnabled = state
-        if not BOXEnabled then
-            for _, box in pairs(espBoxes) do
-                box.Visible = false
-            end
+        for player, box in pairs(espBoxes) do
+            box.Visible = state and (teamCheckEnabled and player.Team ~= Players.LocalPlayer.Team or not teamCheckEnabled)
+        end
+    end,
+}):AddColorPicker("BoxColor", {
+    Text = "Box Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(color)
+        boxColor = color
+        for _, box in pairs(espBoxes) do
+            box.Color = color
+        end
+    end,
+})
+
+espbox:AddToggle("EnableNameTags", {
+    Text = "Enable NameTags",
+    Default = false,
+    Callback = function(state)
+        NameTagsEnabled = state
+        for player, nameTag in pairs(espNameTags) do
+            nameTag.Visible = state and (teamCheckEnabled and player.Team ~= Players.LocalPlayer.Team or not teamCheckEnabled)
+        end
+    end,
+}):AddColorPicker("NameTagColor", {
+    Text = "NameTag Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(color)
+        nameTagColor = color
+        for _, nameTag in pairs(espNameTags) do
+            nameTag.Color = color
+        end
+    end,
+})
+
+espbox:AddToggle("EnableTracer", {
+    Text = "Enable Tracers",
+    Default = false,
+    Callback = function(state)
+        TRAEnabled = state
+        for player, tracer in pairs(espTracers) do
+            tracer.Visible = state and (teamCheckEnabled and player.Team ~= Players.LocalPlayer.Team or not teamCheckEnabled)
+        end
+    end,
+}):AddColorPicker("TracerColor", {
+    Text = "Tracer Color",
+    Default = Color3.fromRGB(255, 255, 255),
+    Callback = function(color)
+        tracerColor = color
+        for _, tracer in pairs(espTracers) do
+            tracer.Color = color
         end
     end,
 })
