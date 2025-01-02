@@ -1265,6 +1265,7 @@ end)
 local targetStrafe = GeneralTab:AddLeftGroupbox("Target Strafe")
 
 local strafeEnabled = false
+local strafeAllowed = true
 local strafeSpeed, strafeRadius = 50, 5
 local strafeMode, targetPlayer = "Horizontal", nil
 local originalCameraMode = nil
@@ -1297,6 +1298,7 @@ local function getClosestPlayer()
 end
 
 local function startTargetStrafe()
+    if not strafeAllowed then return end
     targetPlayer = getClosestPlayer()
     if targetPlayer and targetPlayer.Character then
         originalCameraMode = game:GetService("Players").LocalPlayer.CameraMode
@@ -1314,7 +1316,7 @@ local function startTargetStrafe()
 end
 
 local function strafeAroundTarget()
-    if not (targetPlayer and targetPlayer.Character) then return end
+    if not (strafeAllowed and targetPlayer and targetPlayer.Character) then return end
 
     local targetPos = targetPlayer.Character.HumanoidRootPart.Position
     local angle = tick() * (strafeSpeed / 10)
@@ -1333,13 +1335,27 @@ local function stopTargetStrafe()
     strafeEnabled, targetPlayer = false, nil
 end
 
+targetStrafe:AddButton("Toggle Strafe Control", {
+    Text = "Enable/Disable Strafe",
+    Default = false,
+    Tooltip = "Enable or disable the ability to use Target Strafe.",
+    Callback = function()
+        strafeAllowed = not strafeAllowed
+        if not strafeAllowed and strafeEnabled then
+            stopTargetStrafe()
+        end
+    end
+})
+
 targetStrafe:AddToggle("strafeToggle", {
     Text = "Enable Target Strafe",
     Default = false,
     Tooltip = "Enable or disable Target Strafe.",
     Callback = function(value)
-        strafeEnabled = value
-        if strafeEnabled then startTargetStrafe() else stopTargetStrafe() end
+        if strafeAllowed then
+            strafeEnabled = value
+            if strafeEnabled then startTargetStrafe() else stopTargetStrafe() end
+        end
     end
 }):AddKeyPicker("strafeToggleKey", {
     Default = "L",
@@ -1348,8 +1364,10 @@ targetStrafe:AddToggle("strafeToggle", {
     Text = "Target Strafe Toggle Key",
     Tooltip = "Key to toggle Target Strafe",
     Callback = function(value)
-        strafeEnabled = value
-        if strafeEnabled then startTargetStrafe() else stopTargetStrafe() end
+        if strafeAllowed then
+            strafeEnabled = value
+            if strafeEnabled then startTargetStrafe() else stopTargetStrafe() end
+        end
     end
 })
 
@@ -1383,7 +1401,7 @@ targetStrafe:AddSlider("strafeSpeedSlider", {
 })
 
 game:GetService("RunService").RenderStepped:Connect(function()
-    if strafeEnabled then strafeAroundTarget() end
+    if strafeEnabled and strafeAllowed then strafeAroundTarget() end
 end)
 
 while true do
