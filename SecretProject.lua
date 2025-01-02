@@ -1336,8 +1336,8 @@ local function stopTargetStrafe()
 end
 
 targetStrafe:AddToggle("strafeControlToggle", {
-    Text = "Enable/Disable",
-    Default = true,
+    Text = "Enable Target Strafe",
+    Default = false,
     Tooltip = "Enable or disable the ability to use Target Strafe.",
     Callback = function(value)
         strafeAllowed = value
