@@ -970,12 +970,36 @@ local function removeNameTag(player)
     end
 end
 
-Players.PlayerAdded:Connect(addESP)
-Players.PlayerRemoving:Connect(removeESP)
-Players.PlayerAdded:Connect(addTracer)
-Players.PlayerRemoving:Connect(removeTracer)
-Players.PlayerAdded:Connect(addNameTag)
-Players.PlayerRemoving:Connect(removeNameTag)
+local function updateTeamColor(player)
+    if EspTeamColor then
+        if espBoxes[player] then espBoxes[player].Color = player.TeamColor.Color end
+        if espTracers[player] then espTracers[player].Color = player.TeamColor.Color end
+        if espNameTags[player] then espNameTags[player].Color = player.TeamColor.Color end
+    else
+        if espBoxes[player] then espBoxes[player].Color = boxColor end
+        if espTracers[player] then espTracers[player].Color = tracerColor end
+        if espNameTags[player] then espNameTags[player].Color = nameTagColor end
+    end
+end
+
+Players.PlayerAdded:Connect(function(player)
+    addESP(player)
+    addTracer(player)
+    addNameTag(player)
+    player.Changed:Connect(function(property)
+        if property == "Team" then
+            updateTeamColor(player)
+        end
+    end)
+    updateTeamColor(player)
+end)
+
+
+Players.PlayerRemoving:Connect(function(player)
+    removeESP(player)
+    removeTracer(player)
+    removeNameTag(player)
+end)
 
 for _, player in pairs(Players:GetPlayers()) do
     addESP(player)
@@ -1016,14 +1040,15 @@ espbox:AddToggle("EspTeamColor", {
     Text = "ESP Team Color",
     Default = false,
     Callback = function(state)
+        EspTeamColor = state
         for player, box in pairs(espBoxes) do
-            box.Color = state and player.TeamColor.Color or boxColor
+            updateTeamColor(player)
         end
         for player, tracer in pairs(espTracers) do
-            tracer.Color = state and player.TeamColor.Color or tracerColor
+            updateTeamColor(player)
         end
         for player, nameTag in pairs(espNameTags) do
-            nameTag.Color = state and player.TeamColor.Color or nameTagColor
+            updateTeamColor(player)
         end
     end,
 })
