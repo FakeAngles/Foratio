@@ -1251,12 +1251,48 @@ local function enableBulletHitManipulation(value)
 end
 
 WarTycoonBox:AddToggle("BulletHit manipulation", {
-    Text = "Magic bullet [beta]",
+    Text = "Magic Bullet [beta]",
     Default = false,
     Tooltip = "Magic Bullet?",
     Callback = function(value)
         enableBulletHitManipulation(value)
     end
+})
+
+local hookEnabled = false
+local oldNamecall
+
+local function enableRocketHitManipulation(value)
+    RManipulation = value
+    local remote = game:GetService("ReplicatedStorage").RocketSystem.Events.RocketHit
+
+    if RManipulation and not hookEnabled then
+        hookEnabled = true
+        oldNamecall = hookmetamethod(remote, "__namecall", newcclosure(function(self, ...)
+            if typeof(self) == "Instance" and getnamecallmethod() == "FireServer" and self == remote then
+                local remArgs = {...}
+                local targetPart = getClosestPlayer()
+                if targetPart then
+                    remArgs[1] = targetPart.Position
+                    remArgs[2] = (targetPart.Position - game:GetService("Players").LocalPlayer.Character.HumanoidRootPart.Position).unit
+                    remArgs[5] = targetPart
+                    setnamecallmethod("FireServer")
+                    return oldNamecall(self, unpack(remArgs))
+                end
+            end
+            return oldNamecall(self, ...)
+        end))
+    elseif not RManipulation and hookEnabled then
+        hookEnabled = false
+        if oldNamecall then hookmetamethod(remote, "__namecall", oldNamecall) end
+    end
+end
+
+WarTycoonBox:AddToggle("RocketHit manipulation", {
+    Text = "Magic Rocket",
+    Default = false,
+    Tooltip = "Enables Magic Rocket manipulation",
+    Callback = enableRocketHitManipulation
 })
 
 local function modifyWeaponSettings(property, value)
