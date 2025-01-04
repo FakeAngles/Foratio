@@ -1375,7 +1375,10 @@ local function getClosestPlayer()
 end
 
 local function startRPGSpam()
-    if not isRPGSpamEnabled then return end
+    if not isRPGSpamEnabled then 
+        return 
+    end
+
     if not RocketSystem then
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
         RocketSystem = ReplicatedStorage:WaitForChild("RocketSystem")
@@ -1385,31 +1388,48 @@ local function startRPGSpam()
     if not ACS_Client then
         ACS_Client = require(workspace[game:GetService("Players").LocalPlayer.Name].ACS_Client)
     end
-    local closestPlayer = getClosestPlayer()
-    if not closestPlayer then return end
-    local targetPosition = closestPlayer.Position
-    local directionToTarget = (targetPosition - LocalPlayer.Character.HumanoidRootPart.Position).unit
-    FireRocket:InvokeServer(directionToTarget, workspace[LocalPlayer.Name].RPG, workspace[LocalPlayer.Name].RPG, targetPosition)
-    local fireRocketClientTable = {
-        ["expShake"] = {["fadeInTime"] = 0.05, ["magnitude"] = 3, ["rotInfluence"] = {0.4, 0, 0.4}, ["fadeOutTime"] = 0.5, ["posInfluence"] = {1, 1, 0}, ["roughness"] = 3},
-        ["gravity"] = Vector3.new(0, -20, 0),
-        ["HelicopterDamage"] = 450,
-        ["FireRate"] = 15,
-        ["VehicleDamage"] = 350,
-        ["ExpName"] = "RPG",
-        ["RocketAmount"] = rocketsToFire,
-        ["ExpRadius"] = 12,
-        ["BoatDamage"] = 300,
-        ["TankDamage"] = 300,
-        ["Acceleration"] = 8,
-        ["ShieldDamage"] = 170,
-        ["Distance"] = 4000,
-        ["PlaneDamage"] = 500,
-        ["GunshipDamage"] = 170,
-        ["velocity"] = 200,
-        ["ExplosionDamage"] = 120
-    }
-    FireRocketClient:Fire(targetPosition, directionToTarget, fireRocketClientTable, RocketSystem.Rockets["RPG Rocket"], workspace[LocalPlayer.Name].RPG, workspace[LocalPlayer.Name].RPG, LocalPlayer)
+
+    for i = 1, rocketsToFire do
+        if not isRPGSpamEnabled then 
+            return 
+        end
+
+        local closestPlayer = getClosestPlayer()
+        if not closestPlayer then 
+            return 
+        end
+
+        local targetPosition = closestPlayer.Position
+        local directionToTarget = (targetPosition - LocalPlayer.Character.HumanoidRootPart.Position).unit
+
+        FireRocket:InvokeServer(directionToTarget, workspace[LocalPlayer.Name].RPG, workspace[LocalPlayer.Name].RPG, targetPosition)
+        FireRocketClient:Fire(
+            targetPosition,
+            directionToTarget,
+            {
+                ["expShake"] = {["fadeInTime"] = 0.05, ["magnitude"] = 3, ["rotInfluence"] = {0.4, 0, 0.4}, ["fadeOutTime"] = 0.5, ["posInfluence"] = {1, 1, 0}, ["roughness"] = 3},
+                ["gravity"] = Vector3.new(0, -20, 0),
+                ["HelicopterDamage"] = 450,
+                ["FireRate"] = 15,
+                ["VehicleDamage"] = 350,
+                ["ExpName"] = "RPG",
+                ["ExpRadius"] = 12,
+                ["BoatDamage"] = 300,
+                ["TankDamage"] = 300,
+                ["Acceleration"] = 8,
+                ["ShieldDamage"] = 170,
+                ["Distance"] = 4000,
+                ["PlaneDamage"] = 500,
+                ["GunshipDamage"] = 170,
+                ["velocity"] = 200,
+                ["ExplosionDamage"] = 120
+            },
+            RocketSystem.Rockets["RPG Rocket"],
+            workspace[LocalPlayer.Name].RPG,
+            workspace[LocalPlayer.Name].RPG,
+            LocalPlayer
+        )
+    end
 end
 
 WarTycoonBox:AddToggle("RPG Spam", {
