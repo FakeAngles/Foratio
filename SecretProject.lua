@@ -1456,7 +1456,7 @@ WarTycoonBox:AddSlider("Rocket Count", {
     Text = "Rockets per Spam",
     Default = 1,
     Min = 1,
-    Max = 1000,
+    Max = 5000,
     Rounding = 0,
     Tooltip = "Adjust how many rockets to fire at once.",
     Callback = function(value)
