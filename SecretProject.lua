@@ -1483,7 +1483,7 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
-WarTycoonBox:AddButton('Crash everyone with RPG', function()
+WarTycoonBox:AddButton('Crash everyone with RPG [need rework]', function()
     local camera, playerName = workspace.Camera, game:GetService("Players").LocalPlayer.Name
     local repeatCount = 500
 
