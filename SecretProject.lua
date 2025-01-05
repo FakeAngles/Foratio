@@ -1485,7 +1485,7 @@ end)
 
 WarTycoonBox:AddButton('Crash everyone with RPG', function()
     local camera, playerName = workspace.Camera, game:GetService("Players").LocalPlayer.Name
-    local repeatCount = 50000
+    local repeatCount = 500
 
     local function fireRocket()
         local fireRocketVector = camera.CFrame.LookVector
