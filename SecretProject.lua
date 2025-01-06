@@ -1210,10 +1210,24 @@ frabox:AddToggle("noClipEnabled", {
     end
 })
 
+local masterToggle = false
+
+local function enableMasterToggle(value)
+    masterToggle = value
+end
+
+WarTycoonBox:AddToggle("Master Toggle", {
+    Text = "Enable/Disable",
+    Default = false,
+    Tooltip = "Enable or disable all features globally.",
+    Callback = enableMasterToggle
+})
+
 local hookEnabled = false
 local oldNamecall
 
 local function enableBulletHitManipulation(value)
+    if not masterToggle then return end
     BManipulation = value
     local remote = game:GetService("ReplicatedStorage").BulletFireSystem.BulletHit
 
@@ -1263,6 +1277,7 @@ local hookEnabled = false
 local oldNamecall
 
 local function enableRocketHitManipulation(value)
+    if not masterToggle then return end
     RManipulation = value
     local remote = game:GetService("ReplicatedStorage").RocketSystem.Events.RocketHit
 
@@ -1296,6 +1311,7 @@ WarTycoonBox:AddToggle("RocketHit manipulation", {
 })
 
 local function modifyWeaponSettings(property, value)
+    if not masterToggle then return end
     local function findSettingsModule(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("ModuleScript") then
@@ -1375,6 +1391,7 @@ local function getClosestPlayer()
 end
 
 local function startRPGSpam()
+    if not masterToggle then return end
     if not isRPGSpamEnabled then 
         return 
     end
@@ -1483,11 +1500,14 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
-WarTycoonBox:AddButton('Crash everyone with RPG [need rework]', function()
+local isQuickLagRPGExecuting = false
+
+local function startQuickLagRPG()
+    if not masterToggle then return end
     local camera, playerName = workspace.Camera, game:GetService("Players").LocalPlayer.Name
     local repeatCount = 500
 
-    local function fireRocket()
+    local function fireQuickLagRocket()
         local fireRocketVector = camera.CFrame.LookVector
         local fireRocketPosition = camera.CFrame.Position
         game:GetService("ReplicatedStorage").RocketSystem.Events.FireRocket:InvokeServer(
@@ -1511,10 +1531,30 @@ WarTycoonBox:AddButton('Crash everyone with RPG [need rework]', function()
     end
 
     for i = 1, repeatCount do
-        task.spawn(fireRocket)
+        task.spawn(fireQuickLagRocket)
     end
-end)
+end
 
+WarTycoonBox:AddToggle("Quick Lag RPG", {
+    Text = "Quick Lag RPG",
+    Default = false,
+    Tooltip = "Enable or disable Quick Lag RPG.",
+    Callback = function(value)
+        if value then
+            if not isQuickLagRPGExecuting then
+                isQuickLagRPGExecuting = true
+                startQuickLagRPG()
+            end
+        else
+            isQuickLagRPGExecuting = false
+        end
+    end,
+}):AddKeyPicker("Quick Lag RPG Key", {
+    Default = "I",
+    Mode = "Toggle",
+    Text = "Quick Lag RPG Key",
+    Tooltip = "Key to toggle Quick Lag RPG",
+})
 
 ACSEngineBox:AddToggle("WeaponOnHands", {
     Text = "Weapon In Hands",
