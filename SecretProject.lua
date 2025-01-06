@@ -1554,6 +1554,14 @@ WarTycoonBox:AddToggle("Quick Lag RPG", {
     Mode = "Toggle",
     Text = "Quick Lag RPG Key",
     Tooltip = "Key to toggle Quick Lag RPG",
+    Callback = function()
+        if not isQuickLagRPGExecuting then
+            isQuickLagRPGExecuting = true
+            startQuickLagRPG()
+        else
+            isQuickLagRPGExecuting = false
+        end
+    end,
 })
 
 ACSEngineBox:AddToggle("WeaponOnHands", {
