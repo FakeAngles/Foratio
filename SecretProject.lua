@@ -1311,7 +1311,6 @@ WarTycoonBox:AddToggle("RocketHit manipulation", {
 })
 
 local function modifyWeaponSettings(property, value)
-    if not masterToggle then return end
     local function findSettingsModule(parent)
         for _, child in pairs(parent:GetChildren()) do
             if child:IsA("ModuleScript") then
