@@ -202,7 +202,6 @@ local SaveManager = {} do
 		assert(self.Library, 'Must set SaveManager.Library')
 
 		local section = tab:AddRightGroupbox('Configuration')
-		local section = tab:AddRightGroupbox('Menu')
 
 		section:AddInput('SaveManager_ConfigName',    { Text = 'Config name' })
 		section:AddDropdown('SaveManager_ConfigList', { Text = 'Config list', Values = self:RefreshConfigList(), AllowNull = true })
@@ -271,17 +270,5 @@ local SaveManager = {} do
 
 	SaveManager:BuildFolderTree()
 end
-
-section:AddKeyPicker("MenuToggleKey", {
-    Default = "RightControl", 
-    SyncToggleState = false, 
-    Mode = "Always", 
-    Text = "Menu Toggle Key",
-    Tooltip = "Key to toggle the menu visibility.",
-    Callback = function(newKey)
-        Library.ToggleKeybind = { Type = "KeyPicker", Value = newKey }
-    end
-})
-
 
 return SaveManager
