@@ -1503,9 +1503,6 @@ local function startRPGSpam()
         FireRocket = RocketSystem:WaitForChild("Events"):WaitForChild("FireRocket")
         FireRocketClient = RocketSystem:WaitForChild("Events"):WaitForChild("FireRocketClient")
     end
-    if not ACS_Client then
-        ACS_Client = require(workspace[game:GetService("Players").LocalPlayer.Name].ACS_Client)
-    end
 
     for i = 1, rocketsToFire do
         if not isRPGSpamEnabled then 
