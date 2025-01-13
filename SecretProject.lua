@@ -1113,6 +1113,108 @@ espbox:AddToggle("EnableTracer", {
     end,
 })
 
+local worldbox = VisualsTab:AddRightGroupbox("World")
+
+worldbox:AddSlider("world_fog", {
+    Text = "Fog Density",
+    Default = 0.5, 
+    Min = 0, 
+    Max = 1, 
+    Rounding = 2,
+    Tooltip = "Adjust the fog density",
+    Callback = function(value)
+        game.Lighting.FogEnd = value * 1000 
+        game.Lighting.FogStart = value * 500 
+    end,
+})
+
+worldbox:AddSlider("world_time", {
+    Text = "Clock Time",
+    Default = 12, 
+    Min = 0,
+    Max = 24, 
+    Rounding = 1,
+    Tooltip = "Adjust the time of day",
+    Callback = function(value)
+        game.Lighting.ClockTime = value 
+    end,
+})
+
+local camera = game.Workspace.CurrentCamera
+local fovValue = 70
+
+local function updateFOV(value)
+    fovValue = value
+end
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    camera.FieldOfView = fovValue
+end)
+
+worldbox:AddSlider("fov_slider", {
+    Text = "FOV",
+    Default = 70,
+    Min = 30,
+    Max = 120,
+    Rounding = 2,
+    Tooltip = "Adjust your field of view",
+    Callback = updateFOV
+})
+
+local nebulaThemeColor = Color3.fromRGB(173, 216, 230)
+local nebulaEnabled = false
+
+worldbox:AddToggle("nebula_theme", {
+    Text = "Nebula Theme",
+    Default = false,
+    Tooltip = "Toggle to transform your world into a stunning nebula theme",
+    Callback = function(state)
+        nebulaEnabled = state
+        local lighting = game.Lighting
+        if state then
+            local bloom = lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+            bloom.Intensity, bloom.Size, bloom.Threshold, bloom.Name, bloom.Parent = 0.7, 24, 1, "NebulaBloom", lighting
+
+            local colorCorrection = lighting:FindFirstChild("NebulaColorCorrection") or Instance.new("ColorCorrectionEffect")
+            colorCorrection.Name, colorCorrection.Saturation, colorCorrection.Contrast, colorCorrection.TintColor, colorCorrection.Parent =
+                "NebulaColorCorrection", 0.5, 0.2, nebulaThemeColor, lighting
+
+            lighting.Ambient, lighting.OutdoorAmbient = nebulaThemeColor, nebulaThemeColor
+
+            local atmosphere = lighting:FindFirstChild("NebulaAtmosphere") or Instance.new("Atmosphere")
+            atmosphere.Name, atmosphere.Density, atmosphere.Offset, atmosphere.Glare, atmosphere.Haze, atmosphere.Color, atmosphere.Decay, atmosphere.Parent =
+                "NebulaAtmosphere", 0.4, 0.25, 1, 2, nebulaThemeColor, Color3.fromRGB(25, 25, 112), lighting
+
+            local starEmitter = workspace:FindFirstChild("NebulaStarEmitter") or Instance.new("ParticleEmitter")
+            starEmitter.Name, starEmitter.Texture, starEmitter.Rate, starEmitter.Lifetime, starEmitter.Speed, starEmitter.SpreadAngle, starEmitter.Parent =
+                "NebulaStarEmitter", "rbxassetid://124239974", 50, NumberRange.new(5, 10), NumberRange.new(0, 0), Vector2.new(360, 360), workspace
+        else
+            for _, obj in pairs({"NebulaBloom", "NebulaColorCorrection", "NebulaAtmosphere"}) do
+                local effect = lighting:FindFirstChild(obj)
+                if effect then effect:Destroy() end
+            end
+            local starEmitter = workspace:FindFirstChild("NebulaStarEmitter")
+            if starEmitter then starEmitter:Destroy() end
+            lighting.Ambient, lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127), Color3.fromRGB(127, 127, 127)
+        end
+    end,
+}):AddColorPicker("nebula_color_picker", {
+    Text = "Nebula Color",
+    Default = Color3.fromRGB(173, 216, 230),
+    Tooltip = "Pick a color for the Nebula Theme",
+    Callback = function(color)
+        nebulaThemeColor = color
+        local lighting = game.Lighting
+        if nebulaEnabled then
+            local colorCorrection = lighting:FindFirstChild("NebulaColorCorrection")
+            if colorCorrection then colorCorrection.TintColor = nebulaThemeColor end
+            local atmosphere = lighting:FindFirstChild("NebulaAtmosphere")
+            if atmosphere then atmosphere.Color = nebulaThemeColor end
+            lighting.Ambient, lighting.OutdoorAmbient = nebulaThemeColor, nebulaThemeColor
+        end
+    end,
+})
+
 local localPlayer = game:GetService("Players").LocalPlayer
 local Cmultiplier = 1  
 local isSpeedActive = false
