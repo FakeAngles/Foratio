@@ -72,7 +72,6 @@ local SilentAimSettings = {
     ToggleKey = "U",
     
     TeamCheck = false,
-    VisibleCheck = false, 
     TargetPart = "HumanoidRootPart",
     SilentAimMethod = "Raycast",
     
@@ -132,16 +131,22 @@ fov_circle.Transparency = 1
 fov_circle.Color = Color3.fromRGB(54, 57, 241)
 
 local ExpectedArguments = {
-    FindPartOnRayWithIgnoreList = {
-        ArgCountRequired = 3,
+    ViewportPointToRay = {
+        ArgCountRequired = 2,
         Args = {
-            "Instance", "Ray", "table", "boolean", "boolean"
+            "number", "number", "number"
         }
     },
-    FindPartOnRayWithWhitelist = {
+    ScreenPointToRay = {
+        ArgCountRequired = 2,
+        Args = {
+            "number", "number", "number"
+        }
+    },
+    Raycast = {
         ArgCountRequired = 3,
         Args = {
-            "Instance", "Ray", "table", "boolean"
+            "Instance", "Vector3", "Vector3", "RaycastParams"
         }
     },
     FindPartOnRay = {
@@ -150,10 +155,10 @@ local ExpectedArguments = {
             "Instance", "Ray", "Instance", "boolean", "boolean"
         }
     },
-    Raycast = {
+    FindPartOnRayWithIgnoreList = {
         ArgCountRequired = 3,
         Args = {
-            "Instance", "Vector3", "Vector3", "RaycastParams"
+            "Instance", "Ray", "table", "boolean", "boolean"
         }
     }
 }
@@ -222,8 +227,6 @@ local function getClosestPlayer()
 
         local Character = Player.Character
         if not Character then continue end
-        
-        if Toggles.VisibleCheck.Value and not IsPlayerVisible(Player) then continue end
 
         local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
         local Humanoid = FindFirstChild(Character, "Humanoid")
@@ -240,7 +243,6 @@ local function getClosestPlayer()
     end
     return Closest
 end
-
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -602,15 +604,6 @@ Main:AddToggle("TeamCheck", {
     SilentAimSettings.TeamCheck = Toggles.TeamCheck.Value
 end)
 
-
-Main:AddToggle("VisibleCheck", {
-    Text = "Visible Check", 
-    Default = SilentAimSettings.VisibleCheck
-}):OnChanged(function()
-    SilentAimSettings.VisibleCheck = Toggles.VisibleCheck.Value
-end)
-
-
 Main:AddDropdown("TargetPart", {
     AllowNull = true, 
     Text = "Target Part", 
@@ -620,22 +613,39 @@ Main:AddDropdown("TargetPart", {
     SilentAimSettings.TargetPart = Options.TargetPart.Value
 end)
 
-
 Main:AddDropdown("Method", {
-    AllowNull = true, 
-    Text = "Silent Aim Method", 
-    Default = SilentAimSettings.SilentAimMethod, 
+    AllowNull = true,
+    Text = "Silent Aim Method",
+    Default = SilentAimSettings.SilentAimMethod,
     Values = {
+        "ViewportPointToRay",
+        "ScreenPointToRay",
         "Raycast",
         "FindPartOnRay",
-        "FindPartOnRayWithWhitelist",
-        "FindPartOnRayWithIgnoreList",
-        "Mouse.Hit/Target"
+        "FindPartOnRayWithIgnoreList"
     }
 }):OnChanged(function() 
     SilentAimSettings.SilentAimMethod = Options.Method.Value 
 end)
 
+if not SilentAimSettings.BlockedMethods then
+    SilentAimSettings.BlockedMethods = {}
+end
+
+Main:AddDropdown("Blocked Methods", {
+    AllowNull = false,
+    Text = "Blocked Methods",
+    Default = SilentAimSettings.BlockedMethods,
+    Values = {
+        "Destroy",
+        "BulkMoveTo",
+        "PivotTo",
+        "TranslateBy",
+        "SetPrimaryPartCFrame"
+    }
+}):OnChanged(function()
+    SilentAimSettings.BlockedMethods = Options["Blocked Methods"].Value
+end)
 
 Main:AddSlider("HitChance", {
     Text = "Hit Chance",
@@ -728,64 +738,53 @@ resume(create(function()
     end)
 end))
 
-
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
-    local Method = getnamecallmethod()
-    local Arguments = {...}
-    local self = Arguments[1]
-    local chance = CalculateChance(SilentAimSettings.HitChance)
-    if Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance == true then
+    local Method, Arguments = getnamecallmethod(), {...}
+    local self, chance = Arguments[1], CalculateChance(SilentAimSettings.HitChance)
+    if Toggles.aim_Enabled and Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance then
+        local function processRayMethod(A_Ray)
+            local HitPart = getClosestPlayer()
+            if HitPart then
+                local Origin = A_Ray.Origin
+                local Direction = getDirection(Origin, HitPart.Position)
+                Arguments[2] = Ray.new(Origin, Direction)
+                return oldNamecall(unpack(Arguments))
+            end
+        end
         if Method == "FindPartOnRayWithIgnoreList" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then
-                local A_Ray = Arguments[2]
-
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    local Origin = A_Ray.Origin
-                    local Direction = getDirection(Origin, HitPart.Position)
-                    Arguments[2] = Ray.new(Origin, Direction)
-
-                    return oldNamecall(unpack(Arguments))
-                end
-            end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then return processRayMethod(Arguments[2]) end
         elseif Method == "FindPartOnRayWithWhitelist" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then
-                local A_Ray = Arguments[2]
-
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    local Origin = A_Ray.Origin
-                    local Direction = getDirection(Origin, HitPart.Position)
-                    Arguments[2] = Ray.new(Origin, Direction)
-
-                    return oldNamecall(unpack(Arguments))
-                end
-            end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then return processRayMethod(Arguments[2]) end
         elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and Options.Method.Value:lower() == Method:lower() then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then
-                local A_Ray = Arguments[2]
-
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    local Origin = A_Ray.Origin
-                    local Direction = getDirection(Origin, HitPart.Position)
-                    Arguments[2] = Ray.new(Origin, Direction)
-
-                    return oldNamecall(unpack(Arguments))
-                end
-            end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then return processRayMethod(Arguments[2]) end
         elseif Method == "Raycast" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
                 local A_Origin = Arguments[2]
-
                 local HitPart = getClosestPlayer()
                 if HitPart then
                     Arguments[3] = getDirection(A_Origin, HitPart.Position)
-
                     return oldNamecall(unpack(Arguments))
                 end
             end
+        elseif Method == "ViewportPointToRay" and Options.Method.Value == Method then
+            if ValidateArguments(Arguments, ExpectedArguments.ViewportPointToRay) then
+                local HitPart = getClosestPlayer()
+                if HitPart then
+                    Arguments[2] = Camera:WorldToViewportPoint(HitPart.Position)
+                    return oldNamecall(unpack(Arguments))
+                end
+            end
+        elseif Method == "ScreenPointToRay" and Options.Method.Value == Method then
+            if ValidateArguments(Arguments, ExpectedArguments.ScreenPointToRay) then
+                local HitPart = getClosestPlayer()
+                if HitPart then
+                    Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
+                    return oldNamecall(unpack(Arguments))
+                end
+            end
+        elseif SilentAimSettings.BlockedMethods and type(SilentAimSettings.BlockedMethods) == "table" and table.find(SilentAimSettings.BlockedMethods, Method) then
+            return oldNamecall(unpack(Arguments))
         end
     end
     return oldNamecall(...)
@@ -1115,105 +1114,259 @@ espbox:AddToggle("EnableTracer", {
 
 local worldbox = VisualsTab:AddRightGroupbox("World")
 
-worldbox:AddSlider("world_fog", {
-    Text = "Fog Density",
-    Default = 0.5, 
-    Min = 0, 
-    Max = 1, 
-    Rounding = 2,
-    Tooltip = "Adjust the fog density",
-    Callback = function(value)
-        game.Lighting.FogEnd = value * 1000 
-        game.Lighting.FogStart = value * 500 
-    end,
-})
+local lighting = game:GetService("Lighting")
+local camera = game.Workspace.CurrentCamera
+local lockedTime, fovValue, fogDensity, nebulaEnabled = 12, 70, 0.5, false
+local nebulaThemeColor = Color3.fromRGB(173, 216, 230)
 
 worldbox:AddSlider("world_time", {
-    Text = "Clock Time",
-    Default = 12, 
-    Min = 0,
-    Max = 24, 
-    Rounding = 1,
-    Tooltip = "Adjust the time of day",
-    Callback = function(value)
-        game.Lighting.ClockTime = value 
+    Text = "Clock Time", Default = 12, Min = 0, Max = 24, Rounding = 1,
+    Callback = function(v) lockedTime = v lighting.ClockTime = v end,
+})
+
+worldbox:AddSlider("world_fog", {
+    Text = "Fog Density", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
+    Callback = function(v)
+        fogDensity = v
+        if not nebulaEnabled then
+            lighting.FogStart, lighting.FogEnd = v * 500, v * 1000
+        end
     end,
 })
 
-local camera = game.Workspace.CurrentCamera
-local fovValue = 70
-
-local function updateFOV(value)
-    fovValue = value
-end
-
-game:GetService("RunService").RenderStepped:Connect(function()
-    camera.FieldOfView = fovValue
+local oldNewIndex
+oldNewIndex = hookmetamethod(game, "__newindex", function(self, property, value)
+    if not checkcaller() and self == lighting then
+        if property == "ClockTime" then value = lockedTime end
+        if property == "FogStart" or property == "FogEnd" then value = fogDensity * (property == "FogStart" and 500 or 1000) end
+    end
+    return oldNewIndex(self, property, value)
 end)
 
 worldbox:AddSlider("fov_slider", {
-    Text = "FOV",
-    Default = 70,
-    Min = 30,
-    Max = 120,
-    Rounding = 2,
-    Tooltip = "Adjust your field of view",
-    Callback = updateFOV
+    Text = "FOV", Default = 70, Min = 30, Max = 120, Rounding = 2,
+    Callback = function(v) fovValue = v end,
 })
 
-local nebulaThemeColor = Color3.fromRGB(173, 216, 230)
-local nebulaEnabled = false
+game:GetService("RunService").RenderStepped:Connect(function() camera.FieldOfView = fovValue end)
 
 worldbox:AddToggle("nebula_theme", {
-    Text = "Nebula Theme",
-    Default = false,
-    Tooltip = "Toggle to transform your world into a stunning nebula theme",
+    Text = "Nebula Theme", Default = false,
     Callback = function(state)
         nebulaEnabled = state
-        local lighting = game.Lighting
         if state then
-            local bloom = lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
-            bloom.Intensity, bloom.Size, bloom.Threshold, bloom.Name, bloom.Parent = 0.7, 24, 1, "NebulaBloom", lighting
-
-            local colorCorrection = lighting:FindFirstChild("NebulaColorCorrection") or Instance.new("ColorCorrectionEffect")
-            colorCorrection.Name, colorCorrection.Saturation, colorCorrection.Contrast, colorCorrection.TintColor, colorCorrection.Parent =
-                "NebulaColorCorrection", 0.5, 0.2, nebulaThemeColor, lighting
-
+            local b = Instance.new("BloomEffect", lighting) b.Intensity, b.Size, b.Threshold, b.Name = 0.7, 24, 1, "NebulaBloom"
+            local c = Instance.new("ColorCorrectionEffect", lighting) c.Saturation, c.Contrast, c.TintColor, c.Name = 0.5, 0.2, nebulaThemeColor, "NebulaColorCorrection"
+            local a = Instance.new("Atmosphere", lighting) a.Density, a.Offset, a.Glare, a.Haze, a.Color, a.Decay, a.Name = 0.4, 0.25, 1, 2, nebulaThemeColor, Color3.fromRGB(25, 25, 112), "NebulaAtmosphere"
             lighting.Ambient, lighting.OutdoorAmbient = nebulaThemeColor, nebulaThemeColor
-
-            local atmosphere = lighting:FindFirstChild("NebulaAtmosphere") or Instance.new("Atmosphere")
-            atmosphere.Name, atmosphere.Density, atmosphere.Offset, atmosphere.Glare, atmosphere.Haze, atmosphere.Color, atmosphere.Decay, atmosphere.Parent =
-                "NebulaAtmosphere", 0.4, 0.25, 1, 2, nebulaThemeColor, Color3.fromRGB(25, 25, 112), lighting
-
-            local starEmitter = workspace:FindFirstChild("NebulaStarEmitter") or Instance.new("ParticleEmitter")
-            starEmitter.Name, starEmitter.Texture, starEmitter.Rate, starEmitter.Lifetime, starEmitter.Speed, starEmitter.SpreadAngle, starEmitter.Parent =
-                "NebulaStarEmitter", "rbxassetid://124239974", 50, NumberRange.new(5, 10), NumberRange.new(0, 0), Vector2.new(360, 360), workspace
+            lighting.FogStart, lighting.FogEnd = 100, 500
         else
-            for _, obj in pairs({"NebulaBloom", "NebulaColorCorrection", "NebulaAtmosphere"}) do
-                local effect = lighting:FindFirstChild(obj)
-                if effect then effect:Destroy() end
+            for _, v in pairs({"NebulaBloom", "NebulaColorCorrection", "NebulaAtmosphere"}) do
+                local obj = lighting:FindFirstChild(v) if obj then obj:Destroy() end
             end
-            local starEmitter = workspace:FindFirstChild("NebulaStarEmitter")
-            if starEmitter then starEmitter:Destroy() end
             lighting.Ambient, lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127), Color3.fromRGB(127, 127, 127)
+            lighting.FogStart, lighting.FogEnd = fogDensity * 500, fogDensity * 1000
         end
     end,
 }):AddColorPicker("nebula_color_picker", {
-    Text = "Nebula Color",
-    Default = Color3.fromRGB(173, 216, 230),
-    Tooltip = "Pick a color for the Nebula Theme",
-    Callback = function(color)
-        nebulaThemeColor = color
-        local lighting = game.Lighting
+    Text = "Nebula Color", Default = Color3.fromRGB(173, 216, 230),
+    Callback = function(c)
+        nebulaThemeColor = c
         if nebulaEnabled then
-            local colorCorrection = lighting:FindFirstChild("NebulaColorCorrection")
-            if colorCorrection then colorCorrection.TintColor = nebulaThemeColor end
-            local atmosphere = lighting:FindFirstChild("NebulaAtmosphere")
-            if atmosphere then atmosphere.Color = nebulaThemeColor end
-            lighting.Ambient, lighting.OutdoorAmbient = nebulaThemeColor, nebulaThemeColor
+            local nc = lighting:FindFirstChild("NebulaColorCorrection") if nc then nc.TintColor = c end
+            local na = lighting:FindFirstChild("NebulaAtmosphere") if na then na.Color = c end
+            lighting.Ambient, lighting.OutdoorAmbient = c, c
         end
     end,
 })
+
+local Lighting = game:GetService("Lighting")
+local Visuals = {}
+local Skyboxes = {}
+
+function Visuals:NewSky(Data)
+    local Name = Data.Name
+    Skyboxes[Name] = {
+        SkyboxBk = Data.SkyboxBk,
+        SkyboxDn = Data.SkyboxDn,
+        SkyboxFt = Data.SkyboxFt,
+        SkyboxLf = Data.SkyboxLf,
+        SkyboxRt = Data.SkyboxRt,
+        SkyboxUp = Data.SkyboxUp,
+        MoonTextureId = Data.Moon or "rbxasset://sky/moon.jpg",
+        SunTextureId = Data.Sun or "rbxasset://sky/sun.jpg"
+    }
+end
+
+function Visuals:SwitchSkybox(Name)
+    local OldSky = Lighting:FindFirstChildOfClass("Sky")
+    if OldSky then OldSky:Destroy() end
+
+    local Sky = Instance.new("Sky", Lighting)
+    for Index, Value in pairs(Skyboxes[Name]) do
+        Sky[Index] = Value
+    end
+end
+
+if Lighting:FindFirstChildOfClass("Sky") then
+    local OldSky = Lighting:FindFirstChildOfClass("Sky")
+    Visuals:NewSky({
+        Name = "Game's Default Sky",
+        SkyboxBk = OldSky.SkyboxBk,
+        SkyboxDn = OldSky.SkyboxDn,
+        SkyboxFt = OldSky.SkyboxFt,
+        SkyboxLf = OldSky.SkyboxLf,
+        SkyboxRt = OldSky.SkyboxRt,
+        SkyboxUp = OldSky.SkyboxUp
+    })
+end
+
+Visuals:NewSky({
+    Name = "Sunset",
+    SkyboxBk = "rbxassetid://600830446",
+    SkyboxDn = "rbxassetid://600831635",
+    SkyboxFt = "rbxassetid://600832720",
+    SkyboxLf = "rbxassetid://600886090",
+    SkyboxRt = "rbxassetid://600833862",
+    SkyboxUp = "rbxassetid://600835177"
+})
+
+Visuals:NewSky({
+    Name = "Arctic",
+    SkyboxBk = "http://www.roblox.com/asset/?id=225469390",
+    SkyboxDn = "http://www.roblox.com/asset/?id=225469395",
+    SkyboxFt = "http://www.roblox.com/asset/?id=225469403",
+    SkyboxLf = "http://www.roblox.com/asset/?id=225469450",
+    SkyboxRt = "http://www.roblox.com/asset/?id=225469471",
+    SkyboxUp = "http://www.roblox.com/asset/?id=225469481"
+})
+
+Visuals:NewSky({
+    Name = "Space",
+    SkyboxBk = "http://www.roblox.com/asset/?id=166509999",
+    SkyboxDn = "http://www.roblox.com/asset/?id=166510057",
+    SkyboxFt = "http://www.roblox.com/asset/?id=166510116",
+    SkyboxLf = "http://www.roblox.com/asset/?id=166510092",
+    SkyboxRt = "http://www.roblox.com/asset/?id=166510131",
+    SkyboxUp = "http://www.roblox.com/asset/?id=166510114"
+})
+
+Visuals:NewSky({
+    Name = "Roblox Default",
+    SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex",
+    SkyboxDn = "rbxasset://textures/sky/sky512_dn.tex",
+    SkyboxFt = "rbxasset://textures/sky/sky512_ft.tex",
+    SkyboxLf = "rbxasset://textures/sky/sky512_lf.tex",
+    SkyboxRt = "rbxasset://textures/sky/sky512_rt.tex",
+    SkyboxUp = "rbxasset://textures/sky/sky512_up.tex"
+})
+
+Visuals:NewSky({
+    Name = "Red Night", 
+    SkyboxBk = "http://www.roblox.com/Asset/?ID=401664839";
+    SkyboxDn = "http://www.roblox.com/Asset/?ID=401664862";
+    SkyboxFt = "http://www.roblox.com/Asset/?ID=401664960";
+    SkyboxLf = "http://www.roblox.com/Asset/?ID=401664881";
+    SkyboxRt = "http://www.roblox.com/Asset/?ID=401664901";
+    SkyboxUp = "http://www.roblox.com/Asset/?ID=401664936";
+})
+
+Visuals:NewSky({
+    Name = "Deep Space", 
+    SkyboxBk = "http://www.roblox.com/asset/?id=149397692";
+    SkyboxDn = "http://www.roblox.com/asset/?id=149397686";
+    SkyboxFt = "http://www.roblox.com/asset/?id=149397697";
+    SkyboxLf = "http://www.roblox.com/asset/?id=149397684";
+    SkyboxRt = "http://www.roblox.com/asset/?id=149397688";
+    SkyboxUp = "http://www.roblox.com/asset/?id=149397702";
+})
+
+Visuals:NewSky({
+    Name = "Pink Skies", 
+    SkyboxBk = "http://www.roblox.com/asset/?id=151165214";
+    SkyboxDn = "http://www.roblox.com/asset/?id=151165197";
+    SkyboxFt = "http://www.roblox.com/asset/?id=151165224";
+    SkyboxLf = "http://www.roblox.com/asset/?id=151165191";
+    SkyboxRt = "http://www.roblox.com/asset/?id=151165206";
+    SkyboxUp = "http://www.roblox.com/asset/?id=151165227";
+})
+
+Visuals:NewSky({
+    Name = "Purple Sunset", 
+    SkyboxBk = "rbxassetid://264908339";
+    SkyboxDn = "rbxassetid://264907909";
+    SkyboxFt = "rbxassetid://264909420";
+    SkyboxLf = "rbxassetid://264909758";
+    SkyboxRt = "rbxassetid://264908886";
+    SkyboxUp = "rbxassetid://264907379";
+})
+
+Visuals:NewSky({
+    Name = "Blue Night", 
+    SkyboxBk = "http://www.roblox.com/Asset/?ID=12064107";
+    SkyboxDn = "http://www.roblox.com/Asset/?ID=12064152";
+    SkyboxFt = "http://www.roblox.com/Asset/?ID=12064121";
+    SkyboxLf = "http://www.roblox.com/Asset/?ID=12063984";
+    SkyboxRt = "http://www.roblox.com/Asset/?ID=12064115";
+    SkyboxUp = "http://www.roblox.com/Asset/?ID=12064131";
+})
+
+Visuals:NewSky({
+    Name = "Blossom Daylight", 
+    SkyboxBk = "http://www.roblox.com/asset/?id=271042516";
+    SkyboxDn = "http://www.roblox.com/asset/?id=271077243";
+    SkyboxFt = "http://www.roblox.com/asset/?id=271042556";
+    SkyboxLf = "http://www.roblox.com/asset/?id=271042310";
+    SkyboxRt = "http://www.roblox.com/asset/?id=271042467";
+    SkyboxUp = "http://www.roblox.com/asset/?id=271077958";
+})
+
+Visuals:NewSky({
+    Name = "Blue Nebula", 
+    SkyboxBk = "http://www.roblox.com/asset?id=135207744";
+    SkyboxDn = "http://www.roblox.com/asset?id=135207662";
+    SkyboxFt = "http://www.roblox.com/asset?id=135207770";
+    SkyboxLf = "http://www.roblox.com/asset?id=135207615";
+    SkyboxRt = "http://www.roblox.com/asset?id=135207695";
+    SkyboxUp = "http://www.roblox.com/asset?id=135207794";
+})
+
+Visuals:NewSky({
+    Name = "Blue Planet", 
+    SkyboxBk = "rbxassetid://218955819";
+    SkyboxDn = "rbxassetid://218953419";
+    SkyboxFt = "rbxassetid://218954524";
+    SkyboxLf = "rbxassetid://218958493";
+    SkyboxRt = "rbxassetid://218957134";
+    SkyboxUp = "rbxassetid://218950090";
+})
+
+Visuals:NewSky({
+    Name = "Deep Space", 
+    SkyboxBk = "http://www.roblox.com/asset/?id=159248188";
+    SkyboxDn = "http://www.roblox.com/asset/?id=159248183";
+    SkyboxFt = "http://www.roblox.com/asset/?id=159248187";
+    SkyboxLf = "http://www.roblox.com/asset/?id=159248173";
+    SkyboxRt = "http://www.roblox.com/asset/?id=159248192";
+    SkyboxUp = "http://www.roblox.com/asset/?id=159248176";
+})
+
+local SkyboxNames = {}
+for Name, _ in pairs(Skyboxes) do
+    table.insert(SkyboxNames, Name)
+end
+
+local worldbox = VisualsTab:AddRightGroupbox("SkyBox")
+local SkyboxDropdown = worldbox:AddDropdown("SkyboxSelector", {
+    AllowNull = false,
+    Text = "Select Skybox",
+    Default = "Game's Default Sky",
+    Values = SkyboxNames
+}):OnChanged(function(SelectedSkybox)
+    if Skyboxes[SelectedSkybox] then
+        Visuals:SwitchSkybox(SelectedSkybox)
+    end
+end)
 
 local localPlayer = game:GetService("Players").LocalPlayer
 local Cmultiplier = 1  
@@ -1474,17 +1627,20 @@ local function getClosestPlayer()
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
         if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
+
         local Character = Player.Character
         if not Character then continue end
-        if Toggles.VisibleCheck.Value and not IsPlayerVisible(Player) then continue end
+
         local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
         local Humanoid = FindFirstChild(Character, "Humanoid")
-        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
+        if not HumanoidRootPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
+
         local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
         if not OnScreen then continue end
+
         local Distance = (getMousePosition() - ScreenPosition).Magnitude
         if Distance <= (DistanceToMouse or Options.Radius.Value or 2000) then
-            Closest = (Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value]
+            Closest = ((Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value])
             DistanceToMouse = Distance
         end
     end
