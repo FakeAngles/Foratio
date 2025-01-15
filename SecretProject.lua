@@ -1116,7 +1116,10 @@ local worldbox = VisualsTab:AddRightGroupbox("World")
 
 local lighting = game:GetService("Lighting")
 local camera = game.Workspace.CurrentCamera
-local lockedTime, fovValue, fogDensity, nebulaEnabled = 12, 70, 0.5, false
+local lockedTime, fovValue, nebulaEnabled = 12, 70, false
+local originalAmbient, originalOutdoorAmbient = lighting.Ambient, lighting.OutdoorAmbient
+local originalFogStart, originalFogEnd, originalFogColor = lighting.FogStart, lighting.FogEnd, lighting.FogColor
+
 local nebulaThemeColor = Color3.fromRGB(173, 216, 230)
 
 worldbox:AddSlider("world_time", {
@@ -1124,21 +1127,10 @@ worldbox:AddSlider("world_time", {
     Callback = function(v) lockedTime = v lighting.ClockTime = v end,
 })
 
-worldbox:AddSlider("world_fog", {
-    Text = "Fog Density", Default = 0.5, Min = 0, Max = 1, Rounding = 2,
-    Callback = function(v)
-        fogDensity = v
-        if not nebulaEnabled then
-            lighting.FogStart, lighting.FogEnd = v * 500, v * 1000
-        end
-    end,
-})
-
 local oldNewIndex
 oldNewIndex = hookmetamethod(game, "__newindex", function(self, property, value)
     if not checkcaller() and self == lighting then
         if property == "ClockTime" then value = lockedTime end
-        if property == "FogStart" or property == "FogEnd" then value = fogDensity * (property == "FogStart" and 500 or 1000) end
     end
     return oldNewIndex(self, property, value)
 end)
@@ -1160,12 +1152,14 @@ worldbox:AddToggle("nebula_theme", {
             local a = Instance.new("Atmosphere", lighting) a.Density, a.Offset, a.Glare, a.Haze, a.Color, a.Decay, a.Name = 0.4, 0.25, 1, 2, nebulaThemeColor, Color3.fromRGB(25, 25, 112), "NebulaAtmosphere"
             lighting.Ambient, lighting.OutdoorAmbient = nebulaThemeColor, nebulaThemeColor
             lighting.FogStart, lighting.FogEnd = 100, 500
+            lighting.FogColor = nebulaThemeColor
         else
             for _, v in pairs({"NebulaBloom", "NebulaColorCorrection", "NebulaAtmosphere"}) do
                 local obj = lighting:FindFirstChild(v) if obj then obj:Destroy() end
             end
-            lighting.Ambient, lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127), Color3.fromRGB(127, 127, 127)
-            lighting.FogStart, lighting.FogEnd = fogDensity * 500, fogDensity * 1000
+            lighting.Ambient, lighting.OutdoorAmbient = originalAmbient, originalOutdoorAmbient
+            lighting.FogStart, lighting.FogEnd = originalFogStart, originalFogEnd
+            lighting.FogColor = originalFogColor
         end
     end,
 }):AddColorPicker("nebula_color_picker", {
@@ -1176,9 +1170,11 @@ worldbox:AddToggle("nebula_theme", {
             local nc = lighting:FindFirstChild("NebulaColorCorrection") if nc then nc.TintColor = c end
             local na = lighting:FindFirstChild("NebulaAtmosphere") if na then na.Color = c end
             lighting.Ambient, lighting.OutdoorAmbient = c, c
+            lighting.FogColor = c
         end
     end,
 })
+
 
 local Lighting = game:GetService("Lighting")
 local Visuals = {}
