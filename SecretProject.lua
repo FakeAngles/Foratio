@@ -79,8 +79,6 @@ local SilentAimSettings = {
     FOVVisible = false,
     ShowSilentAimTarget = false, 
     
-    MouseHitPrediction = false,
-    MouseHitPredictionAmount = 0.165,
     HitChance = 100
 }
 
@@ -691,30 +689,6 @@ local FieldOfViewBOX = GeneralTab:AddLeftTabbox("Field Of View") do
         end)
 end
 
-
-local MiscellaneousBOX = GeneralTab:AddLeftTabbox("Miscellaneous") do
-    local PredictionTab = MiscellaneousBOX:AddTab("Prediction")
-    
-
-    PredictionTab:AddToggle("Prediction", {Text = "Mouse.Hit/Target Prediction"})
-        :OnChanged(function()
-            SilentAimSettings.MouseHitPrediction = Toggles.Prediction.Value
-        end)
-    
-
-    PredictionTab:AddSlider("Amount", {
-        Text = "Prediction Amount", 
-        Min = 0.165, 
-        Max = 1, 
-        Default = 0.165, 
-        Rounding = 3
-    }):OnChanged(function()
-        PredictionAmount = Options.Amount.Value
-        SilentAimSettings.MouseHitPredictionAmount = Options.Amount.Value
-    end)
-end
-
-
 resume(create(function()
     RenderStepped:Connect(function()
         if Toggles.MousePosition.Value and Toggles.aim_Enabled.Value then
@@ -789,28 +763,6 @@ oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
     end
     return oldNamecall(...)
 end))
-
-local oldIndex = nil 
-oldIndex = hookmetamethod(game, "__index", newcclosure(function(self, Index)
-    if self == Mouse and not checkcaller() and Toggles.aim_Enabled.Value and Options.Method.Value == "Mouse.Hit/Target" and getClosestPlayer() then
-        local HitPart = getClosestPlayer()
-         
-        if Index == "Target" or Index == "target" then 
-            return HitPart
-        elseif Index == "Hit" or Index == "hit" then 
-            return ((Toggles.Prediction.Value and (HitPart.CFrame + (HitPart.Velocity * PredictionAmount))) or (not Toggles.Prediction.Value and HitPart.CFrame))
-        elseif Index == "X" or Index == "x" then 
-            return self.X 
-        elseif Index == "Y" or Index == "y" then 
-            return self.Y 
-        elseif Index == "UnitRay" then 
-            return Ray.new(self.Origin, (self.Hit - self.Origin).Unit)
-        end
-    end
-
-    return oldIndex(self, Index)
-end))
-
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
