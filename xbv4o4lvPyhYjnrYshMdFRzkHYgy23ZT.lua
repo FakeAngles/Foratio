@@ -218,7 +218,9 @@ end
 local function getClosestPlayer()
     if not Options.TargetPart.Value then return end
     local Closest
-    local DistanceToMouse
+    local DistanceToCenter
+    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
         if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
@@ -226,19 +228,20 @@ local function getClosestPlayer()
         local Character = Player.Character
         if not Character then continue end
 
-        local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
-        local Humanoid = FindFirstChild(Character, "Humanoid")
-        if not HumanoidRootPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
+        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
 
         local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
         if not OnScreen then continue end
 
-        local Distance = (getMousePosition() - ScreenPosition).Magnitude
-        if Distance <= (DistanceToMouse or Options.Radius.Value or 2000) then
+        local Distance = (ScreenCenter - ScreenPosition).Magnitude
+        if Distance <= (DistanceToCenter or Options.Radius.Value or 2000) then
             Closest = ((Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value])
-            DistanceToMouse = Distance
+            DistanceToCenter = Distance
         end
     end
+
     return Closest
 end
 
@@ -320,7 +323,7 @@ end)
 
 
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LionTheGreatRealFrFr/MobileLinoriaLib/refs/heads/main/Library.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/linoralib.lua"))()
 local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manage2.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manager.lua"))()
 
@@ -707,10 +710,11 @@ resume(create(function()
         if Toggles.Visible.Value then 
             fov_circle.Visible = Toggles.Visible.Value
             fov_circle.Color = Options.Color.Value
-            fov_circle.Position = getMousePosition()
+            fov_circle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         end
     end)
 end))
+
 
 local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
@@ -1571,7 +1575,9 @@ local RocketSystem, FireRocket, FireRocketClient, ACS_Client
 local function getClosestPlayer()
     if not Options.TargetPart.Value then return end
     local Closest
-    local DistanceToMouse
+    local DistanceToCenter
+    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
         if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
@@ -1579,17 +1585,17 @@ local function getClosestPlayer()
         local Character = Player.Character
         if not Character then continue end
 
-        local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
-        local Humanoid = FindFirstChild(Character, "Humanoid")
-        if not HumanoidRootPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
+        local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+        local Humanoid = Character:FindFirstChild("Humanoid")
+        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
 
         local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
         if not OnScreen then continue end
 
-        local Distance = (getMousePosition() - ScreenPosition).Magnitude
-        if Distance <= (DistanceToMouse or Options.Radius.Value or 2000) then
+        local Distance = (ScreenCenter - ScreenPosition).Magnitude
+        if Distance <= (DistanceToCenter or Options.Radius.Value or 2000) then
             Closest = ((Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value])
-            DistanceToMouse = Distance
+            DistanceToCenter = Distance
         end
     end
     return Closest
@@ -1994,32 +2000,29 @@ while true do
                 local moveDirection = humanoid.MoveDirection.Unit
                 localPlayer.Character.HumanoidRootPart.CFrame = localPlayer.Character.HumanoidRootPart.CFrame + moveDirection * Cmultiplier
             end
-
-            if isFlyActive then
-                local flyDirection = Vector3.zero
-
-                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
-                    flyDirection = flyDirection + camera.CFrame.LookVector
-                end
-                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
-                    flyDirection = flyDirection - camera.CFrame.LookVector
-                end
-                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
-                    flyDirection = flyDirection - camera.CFrame.RightVector
-                end
-                if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
-                    flyDirection = flyDirection + camera.CFrame.RightVector
-                end
-
-                if flyDirection.Magnitude > 0 then
-                    flyDirection = flyDirection.Unit
-                end
-
-                local newPosition = localPlayer.Character.HumanoidRootPart.Position + flyDirection * flySpeed
-                localPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(newPosition)
-                localPlayer.Character.HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    
+            if isFlyActive and not flyConnection then
+                flyConnection = RunService.RenderStepped:Connect(function(deltaTime)
+                    local direction = controlModule:GetMoveVector()
+                    local camera = workspace.CurrentCamera
+                    local humanoidRootPart = localPlayer.Character.HumanoidRootPart
+                    
+                    if humanoidRootPart then
+                        local flyDirection = Vector3.new(0, 0, 0)
+                        if direction.X ~= 0 then
+                            flyDirection = flyDirection + camera.CFrame.RightVector * direction.X
+                        end
+                        if direction.Z ~= 0 then
+                            flyDirection = flyDirection - camera.CFrame.LookVector * direction.Z
+                        end
+                        humanoidRootPart.CFrame = humanoidRootPart.CFrame + (flyDirection.Unit * flySpeed * deltaTime)
+                    end
+                end)
+            elseif not isFlyActive and flyConnection then
+                flyConnection:Disconnect()
+                flyConnection = nil
             end
-
+    
             if isNoClipActive then
                 for _, v in pairs(localPlayer.Character:GetDescendants()) do
                     if v:IsA("BasePart") and v.CanCollide then
@@ -2029,6 +2032,5 @@ while true do
             end
         end
     end
-end
-
+    
 ThemeManager:LoadDefaultTheme()
