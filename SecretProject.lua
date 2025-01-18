@@ -324,7 +324,6 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeA
 local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manage2.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manager.lua"))()
 
-
 local Window = Library:CreateWindow({
     Title = 'PasteWare  |  aimwhere',
     Center = true,
@@ -1762,6 +1761,32 @@ WarTycoonBox:AddToggle("Quick Lag RPG", {
             startQuickLagRPG()
         else
             isQuickLagRPGExecuting = false
+        end
+    end,
+})
+
+
+local antiLagConnection
+
+WarTycoonBox:AddToggle("AntiLag", {
+    Text = "Anti-Lag",
+    Default = false,
+    Tooltip = "Enable or disable automatic removal of Models in VisualRockets.",
+    Callback = function(value)
+        if enableMasterToggle then
+            if value then
+                antiLagConnection = workspace:WaitForChild("VisualRockets").ChildAdded:Connect(function(newRocket)
+                    if newRocket:IsA("Model") then newRocket:Destroy() end
+                end)
+            elseif antiLagConnection then
+                antiLagConnection:Disconnect()
+                antiLagConnection = nil
+            end
+        else
+            if antiLagConnection then
+                antiLagConnection:Disconnect()
+                antiLagConnection = nil
+            end
         end
     end,
 })
