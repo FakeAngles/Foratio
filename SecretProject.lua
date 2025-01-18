@@ -324,6 +324,8 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeA
 local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manage2.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manager.lua"))()
 
+Library.KeybindFrame.Visible = true;
+
 local Window = Library:CreateWindow({
     Title = 'PasteWare  |  aimwhere',
     Center = true,
