@@ -4,30 +4,67 @@ getgenv().protectgui = (syn and protectgui) or function() end
 
 if bypass_adonis then
     function sb()
-        local c = {bp={"Cheat","Exploit","Hack","Script","Inject","Memory","Speed","Teleport","Noclip","Fly","Bypass","Macro","AutoFarm","WallHack","AimBot","SpeedHack","NoClip","InfiniteResource","ModifiedClient","GameModifier","ClientModification","RuntimePatch","MemoryManipulation","ProcessInjection"},fe={"Roblox Studio","Roblox Client","Roblox Player","Roblox Beta","Roblox Test Client","RobloxPlayerBeta","RobloxStudioBeta","RobloxApp","RobloxMobile"},nt={md=0.05,mc=100,at=0.8},lr={min=50,max=100},ok=0x35ACED,rni=10,doi=30,bm={at=0.7,lr=0.01,hs=100}}
-        local s={nc={},lns=tick(),rnt=tick(),lo=math.random(c.lr.min,c.lr.max)/1000,os=math.random(1,1e6),bh={},as=0}
+        local c = {
+            bp = {"Cheat","Exploit","Hack","Script","Inject","Memory","Speed","Teleport","Noclip","Fly","Bypass","Macro","AutoFarm","WallHack","AimBot","SpeedHack","NoClip","InfiniteResource","ModifiedClient","GameModifier","ClientModification","RuntimePatch","MemoryManipulation","ProcessInjection"},
+            fe = {"Roblox Studio","Roblox Client","Roblox Player","Roblox Beta","Roblox Test Client","RobloxPlayerBeta","RobloxStudioBeta","RobloxApp","RobloxMobile"},
+            nt = {md=0.05,mc=100,at=0.8},
+            lr = {min=50,max=100},
+            ok = 0x35ACED,
+            rni = 10,
+            doi = 30,
+            bm = {at=0.7,lr=0.01,hs=100}
+        }
+        
+        local s = {
+            nc = {},
+            lns = tick(),
+            rnt = tick(),
+            lo = math.random(c.lr.min,c.lr.max)/1000,
+            os = math.random(1,1e6),
+            bh = {},
+            as = 0
+        }
 
-        local function es(i,k)local r=""for j=1,#i do local c=i:byte(j)r=r..string.char(bit32.bxor(c,k%256))k=bit32.rshift(k,8)+bit32.lshift(k%256,24)end return r end
-        local function ot(t,s)local o={}for k,v in pairs(t)do local ok=es(tostring(k),s)o[ok]=type(v)=="string"and es(v,s+1)or type(v)=="table"and ot(v,s+1)or v end return o end
-        local function sa()return{"[S] I...","[I] S...","[W] P...","[D] O...","[N] E...","[P] A...","[S] S..."}[math.random(7)]end
-
-        game.ReplicatedStorage.RemoteEvent.FireServer=function(self,...)
-            local a=ot({...},s.os)for k in pairs(a)do if type(k)=="string"and k:find(c.ok)then return end end
-            if tick()-s.lns<c.nt.md then return end s.lns=tick()table.insert(s.nc,tick())
-            if #s.nc>c.nt.mc and (#s.nc-c.nt.mc)/c.nt.mc>c.nt.at then c.nt.md=c.nt.md*1.1 end
-            return self.nFireServer(self,...)
+        local orig_FireServer = game.ReplicatedStorage.RemoteEvent.FireServer
+        game.ReplicatedStorage.RemoteEvent.FireServer = function(self, ...)
+            local a = (es and ot({...}, s.os)) or {...}
+            for k in pairs(a) do
+                if type(k) == "string" and k:find(c.ok) then 
+                    return 
+                end
+            end
+            if tick() - s.lns < c.nt.md then return end
+            s.lns = tick()
+            table.insert(s.nc, tick())
+            if #s.nc > c.nt.mc and (#s.nc - c.nt.mc)/c.nt.mc > c.nt.at then
+                c.nt.md = c.nt.md * 1.1
+            end
+            return orig_FireServer(self, ...)
         end
+        if debug and debug.getinfo and getgc and hookfunction then
+            task.spawn(function()
+                local h = {}
+                if setthreadidentity then setthreadidentity(2) end
+                
+                for i, v in getgc(true) do
+                    if type(v) == "table" then
+                        if not h.D and rawget(v, "Detected") then
+                            h.D = hookfunction(v.Detected, function() return true end)
+                        elseif not h.K and rawget(v, "Variables") and rawget(v, "Process") and rawget(v, "Kill") then
+                            h.K = hookfunction(v.Kill, function() end)
+                        end
+                    end
+                end
 
-        task.spawn(function()
-            local g,h=debug.getinfo,{} setthreadidentity(2)
-            for i,v in getgc(true)do if type(v)=="table"then
-                if not h.D and rawget(v,"Detected")then h.D=hookfunction(v.Detected,function(c,f)return true end)
-                elseif not h.K and rawget(v,"Variables")and rawget(v,"Process")and rawget(v,"Kill")then h.K=hookfunction(v.Kill,function()end)end
-            end end
-            hookfunction(getrenv().debug.info,function(...)
-                return select(2,...)==h.D and coroutine.yield()or debug.info(...)
-            end) setthreadidentity(7)
-        end)
+                if getrenv().debug and getrenv().debug.info then
+                    hookfunction(getrenv().debug.info, function(...)
+                        return select(2,...) == h.D and coroutine.yield() or debug.info(...)
+                    end)
+                end
+                
+                if setthreadidentity then setthreadidentity(7) end
+            end)
+        end
     end
 end
 
