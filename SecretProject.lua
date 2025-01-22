@@ -578,6 +578,8 @@ aimbox:AddDropdown("ResolverMethods", {
 local MainBOX = GeneralTab:AddLeftTabbox("silent aim")
 local Main = MainBOX:AddTab("silent aim")
 
+SilentAimSettings.BulletTP = false
+
 
 Main:AddToggle("aim_Enabled", {Text = "Enabled"})
     :AddKeyPicker("aim_Enabled_KeyPicker", {
@@ -601,6 +603,14 @@ Main:AddToggle("TeamCheck", {
     Default = SilentAimSettings.TeamCheck
 }):OnChanged(function()
     SilentAimSettings.TeamCheck = Toggles.TeamCheck.Value
+end)
+
+Main:AddToggle("BulletTP", {
+    Text = "Bullet Teleport",
+    Default = SilentAimSettings.BulletTP,
+    Tooltip = "Teleports bullet origin to target"
+}):OnChanged(function()
+    SilentAimSettings.BulletTP = Toggles.BulletTP.Value
 end)
 
 Main:AddDropdown("TargetPart", {
@@ -717,48 +727,70 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
     local Method, Arguments = getnamecallmethod(), {...}
     local self, chance = Arguments[1], CalculateChance(SilentAimSettings.HitChance)
+    
     if Toggles.aim_Enabled and Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance then
         local function processRayMethod(A_Ray)
             local HitPart = getClosestPlayer()
             if HitPart then
                 local Origin = A_Ray.Origin
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                end
                 local Direction = getDirection(Origin, HitPart.Position)
                 Arguments[2] = Ray.new(Origin, Direction)
                 return oldNamecall(unpack(Arguments))
             end
         end
+
+        local function processRaycast(Origin)
+            local HitPart = getClosestPlayer()
+            if HitPart then
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                    Arguments[2] = Origin
+                end
+                Arguments[3] = getDirection(Origin, HitPart.Position)
+                return oldNamecall(unpack(Arguments))
+            end
+        end
+
+        local function processScreenRay()
+            local HitPart = getClosestPlayer()
+            if HitPart then
+                local Origin = Camera.CFrame.p
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                end
+                Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
+                return Ray.new(Origin, (HitPart.Position - Origin).Unit)
+            end
+        end
+
         if Method == "FindPartOnRayWithIgnoreList" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif Method == "FindPartOnRayWithWhitelist" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and Options.Method.Value:lower() == Method:lower() then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif Method == "Raycast" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
-                local A_Origin = Arguments[2]
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[3] = getDirection(A_Origin, HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processRaycast(Arguments[2])
             end
         elseif Method == "ViewportPointToRay" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.ViewportPointToRay) then
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[2] = Camera:WorldToViewportPoint(HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processScreenRay()
             end
         elseif Method == "ScreenPointToRay" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.ScreenPointToRay) then
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processScreenRay()
             end
-        elseif SilentAimSettings.BlockedMethods and type(SilentAimSettings.BlockedMethods) == "table" and table.find(SilentAimSettings.BlockedMethods, Method) then
+        elseif SilentAimSettings.BlockedMethods and table.find(SilentAimSettings.BlockedMethods, Method) then
             return oldNamecall(unpack(Arguments))
         end
     end
