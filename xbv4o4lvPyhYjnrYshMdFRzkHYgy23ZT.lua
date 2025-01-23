@@ -956,7 +956,7 @@ local function removeNameTag(player)
 end
 
 local function updateTeamColor(player)
-    local teamColor = player.Team and player.Team.TeamColor.Color
+    local teamColor = player.Team and player.Team.TeamColor.Color or Color3.new(1,1,1)
     if EspTeamColor then
         if espBoxes[player] then espBoxes[player].Color = teamColor end
         if espTracers[player] then espTracers[player].Color = teamColor end
