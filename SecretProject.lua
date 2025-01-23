@@ -973,13 +973,6 @@ Players.PlayerAdded:Connect(function(player)
     updateTeamColor(player)
 end)
 
-Players.PlayerAdded:Connect(function(player)
-    addESP(player) addTracer(player) addNameTag(player)
-    player:GetPropertyChangedSignal("Team"):Connect(function() updateTeamColor(player) end)
-    updateTeamColor(player)
-end)
-
-
 Players.PlayerRemoving:Connect(function(player)
     removeESP(player)
     removeTracer(player)
