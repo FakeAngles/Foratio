@@ -956,16 +956,23 @@ local function removeNameTag(player)
 end
 
 local function updateTeamColor(player)
+    local teamColor = player.Team and player.Team.TeamColor.Color
     if EspTeamColor then
-        if espBoxes[player] then espBoxes[player].Color = player.TeamColor.Color end
-        if espTracers[player] then espTracers[player].Color = player.TeamColor.Color end
-        if espNameTags[player] then espNameTags[player].Color = player.TeamColor.Color end
+        if espBoxes[player] then espBoxes[player].Color = teamColor end
+        if espTracers[player] then espTracers[player].Color = teamColor end
+        if espNameTags[player] then espNameTags[player].Color = teamColor end
     else
         if espBoxes[player] then espBoxes[player].Color = boxColor end
         if espTracers[player] then espTracers[player].Color = tracerColor end
         if espNameTags[player] then espNameTags[player].Color = nameTagColor end
     end
 end
+
+Players.PlayerAdded:Connect(function(player)
+    addESP(player) addTracer(player) addNameTag(player)
+    player:GetPropertyChangedSignal("Team"):Connect(function() updateTeamColor(player) end)
+    updateTeamColor(player)
+end)
 
 Players.PlayerAdded:Connect(function(player)
     addESP(player)
