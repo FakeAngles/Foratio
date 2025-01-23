@@ -217,25 +217,28 @@ end
 
 local function getClosestPlayer()
     if not Options.TargetPart.Value then return end
+    local Camera = workspace.CurrentCamera
     local Closest
     local DistanceToMouse
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
         if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
-
+        
         local Character = Player.Character
         if not Character then continue end
-
+        
         local HumanoidRootPart = FindFirstChild(Character, "HumanoidRootPart")
         local Humanoid = FindFirstChild(Character, "Humanoid")
-        if not HumanoidRootPart or not Humanoid or Humanoid and Humanoid.Health <= 0 then continue end
-
+        if not HumanoidRootPart or not Humanoid or Humanoid.Health <= 0 then continue end
+        
         local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
         if not OnScreen then continue end
-
-        local Distance = (getMousePosition() - ScreenPosition).Magnitude
+        
+        local Distance = (center - ScreenPosition).Magnitude
         if Distance <= (DistanceToMouse or Options.Radius.Value or 2000) then
-            Closest = ((Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value])
+            Closest = Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]] or Character[Options.TargetPart.Value]
             DistanceToMouse = Distance
         end
     end
@@ -320,9 +323,11 @@ end)
 
 
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/LionTheGreatRealFrFr/MobileLinoriaLib/refs/heads/main/Library.lua"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/mobileLib.lua"))()
 local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manage2.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/manager.lua"))()
+
+Library.KeybindFrame.Visible = true;
 
 local Window = Library:CreateWindow({
     Title = 'PasteWare  |  aimwhere',
@@ -576,6 +581,8 @@ aimbox:AddDropdown("ResolverMethods", {
 local MainBOX = GeneralTab:AddLeftTabbox("silent aim")
 local Main = MainBOX:AddTab("silent aim")
 
+SilentAimSettings.BulletTP = false
+
 
 Main:AddToggle("aim_Enabled", {Text = "Enabled"})
     :AddKeyPicker("aim_Enabled_KeyPicker", {
@@ -599,6 +606,14 @@ Main:AddToggle("TeamCheck", {
     Default = SilentAimSettings.TeamCheck
 }):OnChanged(function()
     SilentAimSettings.TeamCheck = Toggles.TeamCheck.Value
+end)
+
+Main:AddToggle("BulletTP", {
+    Text = "Bullet Teleport",
+    Default = SilentAimSettings.BulletTP,
+    Tooltip = "Teleports bullet origin to target"
+}):OnChanged(function()
+    SilentAimSettings.BulletTP = Toggles.BulletTP.Value
 end)
 
 Main:AddDropdown("TargetPart", {
@@ -689,12 +704,12 @@ local FieldOfViewBOX = GeneralTab:AddLeftTabbox("Field Of View") do
 end
 
 resume(create(function()
+    local Camera = workspace.CurrentCamera
     RenderStepped:Connect(function()
         if Toggles.MousePosition.Value and Toggles.aim_Enabled.Value then
             if getClosestPlayer() then 
                 local Root = getClosestPlayer().Parent.PrimaryPart or getClosestPlayer()
-                local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, Root.Position);
-
+                local RootToViewportPoint, IsOnScreen = WorldToViewportPoint(Camera, Root.Position)
                 mouse_box.Visible = IsOnScreen
                 mouse_box.Position = Vector2.new(RootToViewportPoint.X, RootToViewportPoint.Y)
             else 
@@ -706,7 +721,7 @@ resume(create(function()
         if Toggles.Visible.Value then 
             fov_circle.Visible = Toggles.Visible.Value
             fov_circle.Color = Options.Color.Value
-            fov_circle.Position = getMousePosition()
+            fov_circle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
         end
     end)
 end))
@@ -715,48 +730,70 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
     local Method, Arguments = getnamecallmethod(), {...}
     local self, chance = Arguments[1], CalculateChance(SilentAimSettings.HitChance)
+    
     if Toggles.aim_Enabled and Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance then
         local function processRayMethod(A_Ray)
             local HitPart = getClosestPlayer()
             if HitPart then
                 local Origin = A_Ray.Origin
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                end
                 local Direction = getDirection(Origin, HitPart.Position)
                 Arguments[2] = Ray.new(Origin, Direction)
                 return oldNamecall(unpack(Arguments))
             end
         end
+
+        local function processRaycast(Origin)
+            local HitPart = getClosestPlayer()
+            if HitPart then
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                    Arguments[2] = Origin
+                end
+                Arguments[3] = getDirection(Origin, HitPart.Position)
+                return oldNamecall(unpack(Arguments))
+            end
+        end
+
+        local function processScreenRay()
+            local HitPart = getClosestPlayer()
+            if HitPart then
+                local Origin = Camera.CFrame.p
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                end
+                Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
+                return Ray.new(Origin, (HitPart.Position - Origin).Unit)
+            end
+        end
+
         if Method == "FindPartOnRayWithIgnoreList" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif Method == "FindPartOnRayWithWhitelist" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and Options.Method.Value:lower() == Method:lower() then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then return processRayMethod(Arguments[2]) end
+            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then 
+                return processRayMethod(Arguments[2]) 
+            end
         elseif Method == "Raycast" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
-                local A_Origin = Arguments[2]
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[3] = getDirection(A_Origin, HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processRaycast(Arguments[2])
             end
         elseif Method == "ViewportPointToRay" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.ViewportPointToRay) then
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[2] = Camera:WorldToViewportPoint(HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processScreenRay()
             end
         elseif Method == "ScreenPointToRay" and Options.Method.Value == Method then
             if ValidateArguments(Arguments, ExpectedArguments.ScreenPointToRay) then
-                local HitPart = getClosestPlayer()
-                if HitPart then
-                    Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
-                    return oldNamecall(unpack(Arguments))
-                end
+                return processScreenRay()
             end
-        elseif SilentAimSettings.BlockedMethods and type(SilentAimSettings.BlockedMethods) == "table" and table.find(SilentAimSettings.BlockedMethods, Method) then
+        elseif SilentAimSettings.BlockedMethods and table.find(SilentAimSettings.BlockedMethods, Method) then
             return oldNamecall(unpack(Arguments))
         end
     end
@@ -1569,8 +1606,11 @@ local RocketSystem, FireRocket, FireRocketClient, ACS_Client
 
 local function getClosestPlayer()
     if not Options.TargetPart.Value then return end
+    local Camera = workspace.CurrentCamera
     local Closest
     local DistanceToMouse
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    
     for _, Player in next, GetPlayers(Players) do
         if Player == LocalPlayer then continue end
         if Toggles.TeamCheck.Value and Player.Team == LocalPlayer.Team then continue end
@@ -1585,7 +1625,7 @@ local function getClosestPlayer()
         local ScreenPosition, OnScreen = getPositionOnScreen(HumanoidRootPart.Position)
         if not OnScreen then continue end
 
-        local Distance = (getMousePosition() - ScreenPosition).Magnitude
+        local Distance = (center - ScreenPosition).Magnitude
         if Distance <= (DistanceToMouse or Options.Radius.Value or 2000) then
             Closest = ((Options.TargetPart.Value == "Random" and Character[ValidTargetParts[math.random(1, #ValidTargetParts)]]) or Character[Options.TargetPart.Value])
             DistanceToMouse = Distance
