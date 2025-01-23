@@ -1,3 +1,9 @@
+local UIS = game:GetService("UserInputService")
+if UIS.TouchEnabled and not UIS.MouseEnabled and not UIS.KeyboardEnabled then
+    getgenv().bypass_adonis = true
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/FakeAngles/Foratio/refs/heads/main/xbv4o4lvPyhYjnrYshMdFRzkHYgy23ZT.lua'))() return
+end
+
 if not game:IsLoaded() then 
     game.Loaded:Wait()
 end
@@ -955,7 +961,7 @@ local function removeNameTag(player)
 end
 
 local function updateTeamColor(player)
-    local teamColor = player.Team and player.Team.TeamColor.Color or Color3.new(1,1,1)
+    local teamColor = player.Team and player.Team.TeamColor.Color
     if EspTeamColor then
         if espBoxes[player] then espBoxes[player].Color = teamColor end
         if espTracers[player] then espTracers[player].Color = teamColor end
