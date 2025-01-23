@@ -1803,24 +1803,32 @@ local antiLagConnection
 WarTycoonBox:AddToggle("AntiLag", {
     Text = "Anti-Lag",
     Default = false,
-    Tooltip = "Enable or disable automatic removal of Models in VisualRockets.",
+    Tooltip = "Removing all VisualRockets",
     Callback = function(value)
-        if enableMasterToggle then
-            if value then
-                antiLagConnection = workspace:WaitForChild("VisualRockets").ChildAdded:Connect(function(newRocket)
-                    if newRocket:IsA("Model") then newRocket:Destroy() end
-                end)
-            elseif antiLagConnection then
+        if not enableMasterToggle then
+            if antiLagConnection then
                 antiLagConnection:Disconnect()
                 antiLagConnection = nil
             end
+            return
+        end
+
+        if value then
+            local visualRocketsFolder = workspace:WaitForChild("VisualRockets")
+            for _, object in ipairs(visualRocketsFolder:GetChildren()) do
+                object:Destroy()
+            end
+            antiLagConnection = visualRocketsFolder.ChildAdded:Connect(function(newObject)
+                newObject:Destroy()
+            end)
+
         else
             if antiLagConnection then
                 antiLagConnection:Disconnect()
                 antiLagConnection = nil
             end
         end
-    end,
+    end
 })
 
 ACSEngineBox:AddToggle("WeaponOnHands", {
