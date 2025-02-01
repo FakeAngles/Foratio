@@ -131,33 +131,27 @@ fov_circle.Color = Color3.fromRGB(54, 57, 241)
 local ExpectedArguments = {
     ViewportPointToRay = {
         ArgCountRequired = 2,
-        Args = {
-            "number", "number", "number"
-        }
+        Args = { "number", "number" }
     },
     ScreenPointToRay = {
         ArgCountRequired = 2,
-        Args = {
-            "number", "number", "number"
-        }
+        Args = { "number", "number" }
     },
     Raycast = {
         ArgCountRequired = 3,
-        Args = {
-            "Instance", "Vector3", "Vector3", "RaycastParams"
-        }
+        Args = { "Instance", "Vector3", "Vector3", "RaycastParams" }
     },
     FindPartOnRay = {
         ArgCountRequired = 2,
-        Args = {
-            "Instance", "Ray", "Instance", "boolean", "boolean"
-        }
+        Args = { "Ray", "Instance", "boolean", "boolean" }
     },
     FindPartOnRayWithIgnoreList = {
         ArgCountRequired = 3,
-        Args = {
-            "Instance", "Ray", "table", "boolean", "boolean"
-        }
+        Args = { "Ray", "table", "boolean", "boolean" }
+    },
+    FindPartOnRayWithWhitelist = { 
+        ArgCountRequired = 3,
+        Args = { "Ray", "table", "boolean", "boolean" }
     }
 }
 
@@ -614,6 +608,14 @@ Main:AddToggle("BulletTP", {
     SilentAimSettings.BulletTP = Toggles.BulletTP.Value
 end)
 
+Main:AddToggle("CheckForFireFunc", {
+    Text = "Check For Fire Function",
+    Default = SilentAimSettings.CheckForFireFunc,
+    Tooltip = "Checks if the method is called from a fire function"
+}):OnChanged(function()
+    SilentAimSettings.CheckForFireFunc = Toggles.CheckForFireFunc.Value
+end)
+
 Main:AddDropdown("TargetPart", {
     AllowNull = true, 
     Text = "Target Part", 
@@ -643,7 +645,8 @@ if not SilentAimSettings.BlockedMethods then
 end
 
 Main:AddDropdown("Blocked Methods", {
-    AllowNull = false,
+    AllowNull = true,
+    Multi = true,
     Text = "Blocked Methods",
     Default = SilentAimSettings.BlockedMethods,
     Values = {
@@ -655,6 +658,40 @@ Main:AddDropdown("Blocked Methods", {
     }
 }):OnChanged(function()
     SilentAimSettings.BlockedMethods = Options["Blocked Methods"].Value
+end)
+
+Main:AddDropdown("Include", {
+    AllowNull = true,
+    Multi = true,
+    Text = "Include",
+    Default = SilentAimSettings.Include or {},
+    Values = {"Camera", "Character"},
+    Tooltip = "Includes these objects in the ignore list"
+}):OnChanged(function()
+    SilentAimSettings.Include = Options.Include.Value
+end)
+
+Main:AddDropdown("Origin", {
+    AllowNull = true,
+    Multi = true,
+    Text = "Origin",
+    Default = SilentAimSettings.Origin or "Camera",
+    Values = {"Camera", "Custom"},
+    Tooltip = "Sets the origin of the bullet"
+}):OnChanged(function()
+    SilentAimSettings.Origin = Options.Origin.Value
+end)
+
+Main:AddSlider("MultiplyUnitBy", {
+    Text = "Multiply Unit By",
+    Default = 1,
+    Min = 0.1,
+    Max = 10,
+    Rounding = 1,
+    Compact = false,
+    Tooltip = "Multiplies the direction vector by this value"
+}):OnChanged(function()
+    SilentAimSettings.MultiplyUnitBy = Options.MultiplyUnitBy.Value
 end)
 
 Main:AddSlider("HitChance", {
@@ -728,73 +765,81 @@ local oldNamecall
 oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(...)
     local Method, Arguments = getnamecallmethod(), {...}
     local self, chance = Arguments[1], CalculateChance(SilentAimSettings.HitChance)
-    
-    if Toggles.aim_Enabled and Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance then
-        local function processRayMethod(A_Ray)
-            local HitPart = getClosestPlayer()
-            if HitPart then
-                local Origin = A_Ray.Origin
-                if SilentAimSettings.BulletTP then
-                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
-                end
-                local Direction = getDirection(Origin, HitPart.Position)
-                Arguments[2] = Ray.new(Origin, Direction)
-                return oldNamecall(unpack(Arguments))
-            end
-        end
 
-        local function processRaycast(Origin)
-            local HitPart = getClosestPlayer()
-            if HitPart then
-                if SilentAimSettings.BulletTP then
-                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
-                    Arguments[2] = Origin
-                end
-                Arguments[3] = getDirection(Origin, HitPart.Position)
-                return oldNamecall(unpack(Arguments))
-            end
-        end
+    local BlockedMethods = SilentAimSettings.BlockedMethods or {}
+    if Method == "Destroy" and self == Client then
+        return
+    end
+    if table.find(BlockedMethods, Method) then
+        return
+    end
 
-        local function processScreenRay()
-            local HitPart = getClosestPlayer()
-            if HitPart then
-                local Origin = Camera.CFrame.p
-                if SilentAimSettings.BulletTP then
-                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
-                end
-                Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
-                return Ray.new(Origin, (HitPart.Position - Origin).Unit)
-            end
-        end
-
-        if Method == "FindPartOnRayWithIgnoreList" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then 
-                return processRayMethod(Arguments[2]) 
-            end
-        elseif Method == "FindPartOnRayWithWhitelist" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then 
-                return processRayMethod(Arguments[2]) 
-            end
-        elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and Options.Method.Value:lower() == Method:lower() then
-            if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then 
-                return processRayMethod(Arguments[2]) 
-            end
-        elseif Method == "Raycast" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
-                return processRaycast(Arguments[2])
-            end
-        elseif Method == "ViewportPointToRay" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.ViewportPointToRay) then
-                return processScreenRay()
-            end
-        elseif Method == "ScreenPointToRay" and Options.Method.Value == Method then
-            if ValidateArguments(Arguments, ExpectedArguments.ScreenPointToRay) then
-                return processScreenRay()
-            end
-        elseif SilentAimSettings.BlockedMethods and table.find(SilentAimSettings.BlockedMethods, Method) then
-            return oldNamecall(unpack(Arguments))
+    local CanContinue = false
+    if SilentAimSettings.CheckForFireFunc and (Method == "FindPartOnRay" or Method == "FindPartOnRayWithWhitelist" or Method == "FindPartOnRayWithIgnoreList" or Method == "Raycast" or Method == "ViewportPointToRay" or Method == "ScreenPointToRay") then
+        local Traceback = tostring(debug.traceback()):lower()
+        if Traceback:find("bullet") or Traceback:find("gun") or Traceback:find("fire") then
+            CanContinue = true
+        else
+            return oldNamecall(...)
         end
     end
+
+    if Toggles.aim_Enabled and Toggles.aim_Enabled.Value and self == workspace and not checkcaller() and chance then
+        local HitPart = getClosestPlayer()
+        if HitPart then
+            local function modifyRay(Origin)
+                if SilentAimSettings.BulletTP then
+                    Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                end
+                return Origin, getDirection(Origin, HitPart.Position)
+            end
+
+            if Method == "FindPartOnRayWithIgnoreList" and Options.Method.Value == Method then
+                if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithIgnoreList) then
+                    local Origin, Direction = modifyRay(Arguments[2].Origin)
+                    Arguments[2] = Ray.new(Origin, Direction * SilentAimSettings.MultiplyUnitBy)
+                    return oldNamecall(unpack(Arguments))
+                end
+            elseif Method == "FindPartOnRayWithWhitelist" and Options.Method.Value == Method then
+                if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRayWithWhitelist) then
+                    local Origin, Direction = modifyRay(Arguments[2].Origin)
+                    Arguments[2] = Ray.new(Origin, Direction * SilentAimSettings.MultiplyUnitBy)
+                    return oldNamecall(unpack(Arguments))
+                end
+            elseif (Method == "FindPartOnRay" or Method == "findPartOnRay") and Options.Method.Value:lower() == Method:lower() then
+                if ValidateArguments(Arguments, ExpectedArguments.FindPartOnRay) then
+                    local Origin, Direction = modifyRay(Arguments[2].Origin)
+                    Arguments[2] = Ray.new(Origin, Direction * SilentAimSettings.MultiplyUnitBy)
+                    return oldNamecall(unpack(Arguments))
+                end
+            elseif Method == "Raycast" and Options.Method.Value == Method then
+                if ValidateArguments(Arguments, ExpectedArguments.Raycast) then
+                    local Origin, Direction = modifyRay(Arguments[2])
+                    Arguments[2], Arguments[3] = Origin, Direction * SilentAimSettings.MultiplyUnitBy
+                    return oldNamecall(unpack(Arguments))
+                end
+            elseif Method == "ViewportPointToRay" and Options.Method.Value == Method then
+                if ValidateArguments(Arguments, ExpectedArguments.ViewportPointToRay) then
+                    local Origin = Camera.CFrame.p
+                    if SilentAimSettings.BulletTP then
+                        Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                    end
+                    Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
+                    return Ray.new(Origin, (HitPart.Position - Origin).Unit * SilentAimSettings.MultiplyUnitBy)
+                end
+            elseif Method == "ScreenPointToRay" and Options.Method.Value == Method then
+                if ValidateArguments(Arguments, ExpectedArguments.ScreenPointToRay) then
+                    local Origin = Camera.CFrame.p
+                    if SilentAimSettings.BulletTP then
+                        Origin = (HitPart.CFrame * CFrame.new(0, 0, 1)).p
+                    end
+                    Arguments[2] = Camera:WorldToScreenPoint(HitPart.Position)
+                    return Ray.new(Origin, (HitPart.Position - Origin).Unit * SilentAimSettings.MultiplyUnitBy)
+                end
+            end
+        end
+    end
+
     return oldNamecall(...)
 end))
 
