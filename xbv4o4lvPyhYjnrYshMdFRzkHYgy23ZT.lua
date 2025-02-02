@@ -1608,26 +1608,61 @@ local function modifyWeaponSettings(property, value)
     local character = player.Character or player.CharacterAdded:Wait()
     local foundModules = {}
 
-    if getgenv().WeaponOnHands then
-        local toolInHand = character:FindFirstChildOfClass("Tool")
-        if toolInHand then
-            local settingsModule = findSettingsModule(toolInHand)
-            if settingsModule then
-                table.insert(foundModules, settingsModule)
+
+    local function findSettingsInWarTycoon(item)
+        local weaponName = item.Name
+        local settingsModule = game:GetService("ReplicatedStorage"):WaitForChild("Configurations"):WaitForChild("ACS_Guns"):FindFirstChild(weaponName)
+        if settingsModule then
+            return settingsModule:FindFirstChild("Settings")
+        end
+        return nil
+    end
+
+    if getgenv().WarTycoon then
+        if getgenv().WeaponOnHands then
+            local toolInHand = character:FindFirstChildOfClass("Tool")
+            if toolInHand then
+                local settingsModule = findSettingsInWarTycoon(toolInHand)
+                if settingsModule then
+                    local success, module = pcall(function() return require(settingsModule) end)
+                    if success and module[property] ~= nil then
+                        module[property] = value
+                    end
+                end
+            end
+        else
+            for _, item in pairs(backpack:GetChildren()) do
+                local settingsModule = findSettingsInWarTycoon(item)
+                if settingsModule then
+                    local success, module = pcall(function() return require(settingsModule) end)
+                    if success and module[property] ~= nil then
+                        module[property] = value
+                    end
+                end
             end
         end
     else
-        for _, item in pairs(backpack:GetChildren()) do
-            local settingsModule = findSettingsModule(item)
-            if settingsModule then
-                table.insert(foundModules, settingsModule)
+        if getgenv().WeaponOnHands then
+            local toolInHand = character:FindFirstChildOfClass("Tool")
+            if toolInHand then
+                local settingsModule = findSettingsModule(toolInHand)
+                if settingsModule then
+                    local success, module = pcall(function() return require(settingsModule) end)
+                    if success and module[property] ~= nil then
+                        module[property] = value
+                    end
+                end
             end
-        end
-    end
-
-    if #foundModules > 0 then
-        for _, module in pairs(foundModules) do
-            module[property] = value
+        else
+            for _, item in pairs(backpack:GetChildren()) do
+                local settingsModule = findSettingsModule(item)
+                if settingsModule then
+                    local success, module = pcall(function() return require(settingsModule) end)
+                    if success and module[property] ~= nil then
+                        module[property] = value
+                    end
+                end
+            end
         end
     end
 end
@@ -1873,6 +1908,15 @@ WarTycoonBox:AddToggle("AntiLag", {
                 antiLagConnection = nil
             end
         end
+    end
+})
+
+ACSEngineBox:AddToggle("WarTycoon", {
+    Text = "War Tycoon",
+    Default = false,
+    Tooltip = "Enable War Tycoon mode to search for weapon settings in ACS_Guns.",
+    Callback = function(value)
+        getgenv().WarTycoon = value
     end
 })
 
