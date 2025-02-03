@@ -1708,9 +1708,7 @@ end
 
 local function startRPGSpam()
     if not masterToggle then return end
-    if not isRPGSpamEnabled then 
-        return 
-    end
+    if not isRPGSpamEnabled then return end
 
     if not RocketSystem then
         local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1719,20 +1717,30 @@ local function startRPGSpam()
         FireRocketClient = RocketSystem:WaitForChild("Events"):WaitForChild("FireRocketClient")
     end
 
-    for i = 1, rocketsToFire do
-        if not isRPGSpamEnabled then 
-            return 
+    local function getActiveWeapon()
+        local validWeapons = {"RPG", "Javelin", "Stinger"}
+        for _, weaponName in ipairs(validWeapons) do
+            local weapon = workspace[LocalPlayer.Name]:FindFirstChild(weaponName)
+            if weapon and weapon:IsA("Tool") and weapon.Parent == workspace[LocalPlayer.Name] then
+                return weaponName
+            end
         end
+        return nil
+    end
+
+    local activeWeapon = getActiveWeapon()
+    if not activeWeapon then return end
+
+    for i = 1, rocketsToFire do
+        if not isRPGSpamEnabled then return end
 
         local closestPlayer = getClosestPlayer()
-        if not closestPlayer then 
-            return 
-        end
+        if not closestPlayer then return end
 
         local targetPosition = closestPlayer.Position
         local directionToTarget = (targetPosition - LocalPlayer.Character.HumanoidRootPart.Position).unit
 
-        FireRocket:InvokeServer(directionToTarget, workspace[LocalPlayer.Name].RPG, workspace[LocalPlayer.Name].RPG, targetPosition)
+        FireRocket:InvokeServer(directionToTarget, workspace[LocalPlayer.Name][activeWeapon], workspace[LocalPlayer.Name][activeWeapon], targetPosition)
         FireRocketClient:Fire(
             targetPosition,
             directionToTarget,
@@ -1742,7 +1750,7 @@ local function startRPGSpam()
                 ["HelicopterDamage"] = 450,
                 ["FireRate"] = 15,
                 ["VehicleDamage"] = 350,
-                ["ExpName"] = "RPG",
+                ["ExpName"] = RPG,
                 ["ExpRadius"] = 12,
                 ["BoatDamage"] = 300,
                 ["TankDamage"] = 300,
@@ -1755,17 +1763,17 @@ local function startRPGSpam()
                 ["ExplosionDamage"] = 120
             },
             RocketSystem.Rockets["RPG Rocket"],
-            workspace[LocalPlayer.Name].RPG,
-            workspace[LocalPlayer.Name].RPG,
+            workspace[LocalPlayer.Name][activeWeapon],
+            workspace[LocalPlayer.Name][activeWeapon],
             LocalPlayer
         )
     end
 end
 
 WarTycoonBox:AddToggle("RPG Spam", {
-    Text = "Toggle RPG Spam",
+    Text = "Toggle rockets Spam",
     Default = false,
-    Tooltip = "Enable or disable RPG spam.",
+    Tooltip = "RPG | JAVELIN | STINGER.",
     Callback = function(value)
         isRPGSpamEnabled = value
     end,
@@ -1773,8 +1781,8 @@ WarTycoonBox:AddToggle("RPG Spam", {
     Default = "Q",
     SyncToggleState = true,
     Mode = "Toggle",  
-    Text = "RPG Spam Key",
-    Tooltip = "Key to toggle RPG Spam",
+    Text = "Rockets Spam Key",
+    Tooltip = "RPG | JAVELIN | STINGER",
     Callback = function()
         if isRPGSpamEnabled then
             startRPGSpam()
@@ -1795,7 +1803,7 @@ WarTycoonBox:AddSlider("Rocket Count", {
 })
 
 WarTycoonBox:AddSlider("Spam Speed", {
-    Text = "RPG Spam Speed",
+    Text = "Rockets Spam Speed",
     Default = 1,
     Min = 0.1,
     Max = 5,
@@ -1813,6 +1821,13 @@ game:GetService("RunService").Heartbeat:Connect(function()
     end
 end)
 
+game:GetService("RunService").Heartbeat:Connect(function()
+    if isRPGSpamEnabled then
+        wait(1 / spamSpeed)
+        startRPGSpam()
+    end
+end)
+
 local isQuickLagRPGExecuting = false
 
 local function startQuickLagRPG()
@@ -1820,38 +1835,57 @@ local function startQuickLagRPG()
     local camera, playerName = workspace.Camera, game:GetService("Players").LocalPlayer.Name
     local repeatCount = 500
 
-    local function fireQuickLagRocket()
+    local validWeapons = {"RPG", "Javelin", "Stinger"}
+
+    local function getActiveWeapon()
+        for _, weaponName in ipairs(validWeapons) do
+            local weapon = workspace[playerName]:FindFirstChild(weaponName)
+            if weapon and weapon:IsA("Tool") and weapon.Parent == workspace[playerName] then
+                return weaponName
+            end
+        end
+        return nil
+    end
+
+    local function fireQuickLagRocket(weaponName)
+        if not weaponName then return end
+
         local fireRocketVector = camera.CFrame.LookVector
         local fireRocketPosition = camera.CFrame.Position
         game:GetService("ReplicatedStorage").RocketSystem.Events.FireRocket:InvokeServer(
-            fireRocketVector, workspace[playerName].RPG, workspace[playerName].RPG, fireRocketPosition
+            fireRocketVector, workspace[playerName][weaponName], workspace[playerName][weaponName], fireRocketPosition
         )
 
         local fireRocketClientTable = {
             ["expShake"] = {["fadeInTime"] = 0.05, ["magnitude"] = 3, ["rotInfluence"] = {0.4, 0, 0.4}, ["fadeOutTime"] = 0.5, ["posInfluence"] = {1, 1, 0}, ["roughness"] = 3},
-            ["gravity"] = Vector3.new(0, -20, 0), ["HelicopterDamage"] = 450, ["FireRate"] = 15, ["VehicleDamage"] = 350, ["ExpName"] = "RPG",
+            ["gravity"] = Vector3.new(0, -20, 0), ["HelicopterDamage"] = 450, ["FireRate"] = 15, ["VehicleDamage"] = 350, ["ExpName"] = "Rocket",
             ["RocketAmount"] = 1, ["ExpRadius"] = 12, ["BoatDamage"] = 300, ["TankDamage"] = 300, ["Acceleration"] = 8, ["ShieldDamage"] = 11170,
             ["Distance"] = 4000, ["PlaneDamage"] = 500, ["GunshipDamage"] = 170, ["velocity"] = 200, ["ExplosionDamage"] = 120
         }
 
         local fireRocketClientInstance1 = game:GetService("ReplicatedStorage").RocketSystem.Rockets["RPG Rocket"]
-        local fireRocketClientInstance2 = workspace[playerName].RPG
-        local fireRocketClientInstance3 = workspace[playerName].RPG
+        local fireRocketClientInstance2 = workspace[playerName][weaponName]
+        local fireRocketClientInstance3 = workspace[playerName][weaponName]
         game:GetService("ReplicatedStorage").RocketSystem.Events.FireRocketClient:Fire(
             camera.CFrame.Position, camera.CFrame.LookVector, fireRocketClientTable, fireRocketClientInstance1, fireRocketClientInstance2, fireRocketClientInstance3,
-            game:GetService("Players").LocalPlayer, nil, { [1] = camera:FindFirstChild("RPG") }
+            game:GetService("Players").LocalPlayer, nil, { [1] = workspace[playerName]:FindFirstChild(weaponName) }
         )
     end
 
-    for i = 1, repeatCount do
-        task.spawn(fireQuickLagRocket)
+    local activeWeapon = getActiveWeapon()
+    if activeWeapon then
+        for i = 1, repeatCount do
+            task.spawn(fireQuickLagRocket, activeWeapon)
+        end
+    else
+        warn("No active weapon: RPG | JAVELIN | STINGER")
     end
 end
 
 WarTycoonBox:AddToggle("Quick Lag RPG", {
-    Text = "Quick Lag RPG",
+    Text = "Quick Lag rocket",
     Default = false,
-    Tooltip = "Enable or disable Quick Lag RPG.",
+    Tooltip = "Enable or disable Quick Lag rocket.",
     Callback = function(value)
         if value then
             if not isQuickLagRPGExecuting then
@@ -1862,11 +1896,11 @@ WarTycoonBox:AddToggle("Quick Lag RPG", {
             isQuickLagRPGExecuting = false
         end
     end,
-}):AddKeyPicker("Quick Lag RPG Key", {
+}):AddKeyPicker("Quick Lag rocket Key", {
     Default = "I",
     Mode = "Toggle",
-    Text = "Quick Lag RPG Key",
-    Tooltip = "Key to toggle Quick Lag RPG",
+    Text = "Quick Lag rocket Key",
+    Tooltip = "Key to toggle Quick Lag rocket",
     Callback = function()
         if not isQuickLagRPGExecuting then
             isQuickLagRPGExecuting = true
@@ -1876,7 +1910,6 @@ WarTycoonBox:AddToggle("Quick Lag RPG", {
         end
     end,
 })
-
 
 local antiLagConnection
 
