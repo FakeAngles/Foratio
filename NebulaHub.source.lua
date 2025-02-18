@@ -2,8 +2,8 @@ local StartTheme = "AmberGlow"
 local function LaunchNH(LTheme)
 
 local version = "0.9.6"
-local DC = "https://discord.gg/EEMafffGeY"
-local Key = "994523"
+local DC = "https://discord.gg/invite"
+local Key = "1"
 local PW = "WTHP-Vincent"
 local NHIcon = 7733752575
 
@@ -64,11 +64,11 @@ local Window = Rayfield:CreateWindow({
       RememberJoins = true -- Set this to false to make them join the discord every time they load it up
    },
 
-   KeySystem = true, -- Set this to true to use our key system
+   KeySystem = false, -- Set this to true to use our key system
    KeySettings = {
       Title = "Nebula Hub | ⚔️ War Tycoon ⚡ | v" .. version,
       Subtitle = "Enter Key",
-      Note = "Free Key in our Discord in #get-nebula-hub channel| " .. DC, -- Use this to tell the user how to get a key
+      Note = "Key 1" .. DC, -- Use this to tell the user how to get a key
       FileName = "WTHP", -- It is recommended to use something unique as other scripts using Rayfield may overwrite your key file
       SaveKey = true, -- The user's key will be saved, but if you change the key, they will be unable to use your script
       GrabKeyFromSite = false, -- If this is true, set Key below to the RAW site you would like Rayfield to get the key from
